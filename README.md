@@ -18,4 +18,4 @@ the index of the annotation to be deleted and click `Delete Key-Value Pair`
   * <span style="color:red">Red</span> indicates low confidence
 
 ## Screenshot
-<img src="docs/UI_screenshot.png" alt="annotation environment" width="400">
+<img src="docs/UI_screenshot.png" alt="annotation environment" width="700">
