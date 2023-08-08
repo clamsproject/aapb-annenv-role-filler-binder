@@ -65,7 +65,6 @@ def cycle_images(images):
         st.warning('No more images to annotate')
         return
     st.session_state['image_index'] = (st.session_state['image_index'] + 1)
-    print(st.session_state['image_index'])
     st.session_state['annotations'] = []
     st.cache_data.clear()
 
@@ -96,13 +95,12 @@ if __name__ == '__main__':
     indexed_images: Dict[int, str] = {i: image for i, image in enumerate(images)}
 
     # Streamlit
-    st.set_page_config(layout="wide")
+    st.set_page_config(layout="centered")
     # Load first image
     if 'image_index' not in st.session_state:
         st.session_state['image_index'] = 0
     if 'annotations' not in st.session_state:
         st.session_state['annotations'] = []
-    print(st.session_state['image_index'])
     sample_img = cv.imread(indexed_images[st.session_state['image_index']])
     image_name = indexed_images[st.session_state['image_index']]
     # Remove file extension
