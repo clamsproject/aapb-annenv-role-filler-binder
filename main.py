@@ -53,6 +53,7 @@ def download_annotations(file_name):
         annotations = annotations.replace('{', f'{{\n"_image_id": "{file_name}",')
         st.session_state['image_id'] = file_name
         # Download
+        # TODO (snewman 8/8/23): Specify download location
         with open(f'{file_name}.json', 'w') as f:
             f.write(annotations)
         st.success('Downloaded annotations')
@@ -62,16 +63,19 @@ def download_annotations(file_name):
 def download_dupe_annotations(file_name):
     with st.spinner('Downloading Duplicate annotations...'):
         # Download JSON referencing image id of last image
+        # TODO (snewman 8/8/23): Specify download location
         with open(f'{file_name}.json', 'w') as f:
             f.write(json.dumps({'_image_id': file_name, '_duplicate_image_id': st.session_state['image_id']}, indent=2))
 
 
 # Cycle to next image, clear annotations, rerun OCR and redraw
-def cycle_images(images, file_name):
-    if len(st.session_state['annotations']) > 0 and file_name is None:
-        st.warning('Please download annotations before switching images')
+def cycle_images(images, file_name, duplicate):
+    if len(st.session_state['annotations']) > 0 and not duplicate:
+        st.warning('Please annotate image before moving on or classify as duplicate')
         return
-    if file_name is not None:
+    if not duplicate:
+        download_annotations(file_name)
+    else:
         download_dupe_annotations(file_name)
     if st.session_state['image_index'] == len(images) - 1:
         st.warning('No more images to annotate')
@@ -103,7 +107,9 @@ if __name__ == '__main__':
     images = [image.name for image in Path(image_dir).glob('*.png')]
     indexed_images: Dict[int, str] = {i: image for i, image in enumerate(images)}
 
+    #############################
     # Streamlit
+    #############################
     st.set_page_config(layout="centered")
     # Load first image
     if 'image_index' not in st.session_state:
@@ -120,14 +126,14 @@ if __name__ == '__main__':
     # Top Buttons
     #############################
     with st.container():
-        col1, col2, col3 = st.columns(3)
-        # On click, cycle to next image, clear annotations, clear key-value inputs, clear results, rerun OCR and redraw
-        col1.button("Next Image", help="Go to next image", on_click=cycle_images, args=(indexed_images, None))
+        col1, col2= st.columns(2)
+        # On click, cycle to next image, clear annotations, save annotations, rerun OCR and redraw
+        col1.button("Next Image", help="Go to next image", on_click=cycle_images,
+                    args=(indexed_images, image_name, False))
         # Handle duplicate frames. If image is duplicate of last image, download json referencing last image's image id
-        col2.button("Duplicate Frame", help="Duplicate frame", on_click=cycle_images, args=(indexed_images, image_name))
-        # On click, download annotations
-        col3.button("Download Annotations", help="Download annotations as a JSON file",
-                    on_click=download_annotations, args=(image_name,))
+        col2.button("Duplicate Frame", help="Duplicate frame", on_click=cycle_images,
+                    args=(indexed_images, image_name, True))
+
 
     ##############################
     # OCR Results and Drawn Image
