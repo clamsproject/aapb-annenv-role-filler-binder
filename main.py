@@ -89,9 +89,6 @@ if __name__ == '__main__':
     image_dir = args.dir
     # Images will have filenames of the form <video_guid>.<frame_number>.png
     images = [image.name for image in Path(image_dir).glob('*.png')]
-    # Create dictionary of {guid: framenumber}
-    # images = {image.split('.')[0]: image for image in images}
-    # For testing create a dictionary of {index: image}
     indexed_images: Dict[int, str] = {i: image for i, image in enumerate(images)}
 
     # Streamlit
@@ -101,7 +98,7 @@ if __name__ == '__main__':
         st.session_state['image_index'] = 0
     if 'annotations' not in st.session_state:
         st.session_state['annotations'] = []
-    sample_img = cv.imread(indexed_images[st.session_state['image_index']])
+    sample_img = cv.imread(f"{image_dir}/{indexed_images[st.session_state['image_index']]}")
     image_name = indexed_images[st.session_state['image_index']]
     # Remove file extension
     image_name = image_name.rsplit('.')[0]
@@ -116,8 +113,6 @@ if __name__ == '__main__':
                     on_click=download_annotations, args=(image_name,))
 
     st.title('OCR Annotation')
-    # image_name = 'credits.png'
-    # sample_img = cv.imread(image_name)
 
     if 'annotations' not in st.session_state:
         st.session_state['annotations'] = []
