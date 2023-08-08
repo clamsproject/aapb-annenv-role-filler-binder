@@ -50,7 +50,7 @@ def download_annotations(file_name):
                 annotations_dict[key] = [value]
         annotations = json.dumps(annotations_dict, indent=2)
         # Add image id to annotations
-        annotations = annotations.replace('{', f'{{\n"image_id": "{file_name}",')
+        annotations = annotations.replace('{', f'{{\n"_image_id": "{file_name}",')
         st.session_state['image_id'] = file_name
         # Download
         with open(f'{file_name}.json', 'w') as f:
@@ -63,7 +63,7 @@ def download_dupe_annotations(file_name):
     with st.spinner('Downloading Duplicate annotations...'):
         # Download JSON referencing image id of last image
         with open(f'{file_name}.json', 'w') as f:
-            f.write(json.dumps({'image_id': st.session_state['image_id']}, indent=2))
+            f.write(json.dumps({'_image_id': file_name, '_duplicate_image_id': st.session_state['image_id']}, indent=2))
 
 
 # Cycle to next image, clear annotations, rerun OCR and redraw
@@ -102,7 +102,6 @@ if __name__ == '__main__':
     # Images will have filenames of the form <video_guid>.<frame_number>.png
     images = [image.name for image in Path(image_dir).glob('*.png')]
     indexed_images: Dict[int, str] = {i: image for i, image in enumerate(images)}
-    print(indexed_images)
 
     # Streamlit
     st.set_page_config(layout="centered")
