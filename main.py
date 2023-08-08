@@ -70,7 +70,7 @@ def download_dupe_annotations(file_name):
 
 # Cycle to next image, clear annotations, rerun OCR and redraw
 def cycle_images(images, file_name, duplicate):
-    if len(st.session_state['annotations']) > 0 and not duplicate:
+    if len(st.session_state['annotations']) == 0 and not duplicate:
         st.warning('Please annotate image before moving on or classify as duplicate')
         return
     if not duplicate:
