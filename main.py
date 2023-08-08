@@ -49,6 +49,9 @@ def download_annotations(file_name):
             else:
                 annotations_dict[key] = [value]
         annotations = json.dumps(annotations_dict, indent=2)
+        # Add image id to annotations
+        annotations = annotations.replace('{', f'{{\n"image_id": "{file_name}",')
+        st.session_state['image_id'] = file_name
         # Download
         with open(f'{file_name}.json', 'w') as f:
             f.write(annotations)
@@ -56,11 +59,20 @@ def download_annotations(file_name):
         st.session_state['annotations'] = []
 
 
+def download_dupe_annotations(file_name):
+    with st.spinner('Downloading Duplicate annotations...'):
+        # Download JSON referencing image id of last image
+        with open(f'{file_name}.json', 'w') as f:
+            f.write(json.dumps({'image_id': st.session_state['image_id']}, indent=2))
+
+
 # Cycle to next image, clear annotations, rerun OCR and redraw
-def cycle_images(images):
-    if len(st.session_state['annotations']) > 0:
+def cycle_images(images, file_name):
+    if len(st.session_state['annotations']) > 0 and file_name is None:
         st.warning('Please download annotations before switching images')
         return
+    if file_name is not None:
+        download_dupe_annotations(file_name)
     if st.session_state['image_index'] == len(images) - 1:
         st.warning('No more images to annotate')
         return
@@ -90,6 +102,7 @@ if __name__ == '__main__':
     # Images will have filenames of the form <video_guid>.<frame_number>.png
     images = [image.name for image in Path(image_dir).glob('*.png')]
     indexed_images: Dict[int, str] = {i: image for i, image in enumerate(images)}
+    print(indexed_images)
 
     # Streamlit
     st.set_page_config(layout="centered")
@@ -104,16 +117,23 @@ if __name__ == '__main__':
     image_name = image_name.rsplit('.')[0]
     ocr = run_ocr()
 
+    #############################
+    # Top Buttons
+    #############################
     with st.container():
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         # On click, cycle to next image, clear annotations, clear key-value inputs, clear results, rerun OCR and redraw
-        col1.button("Next Image", help="Go to next image", on_click=cycle_images, args=(indexed_images,))
+        col1.button("Next Image", help="Go to next image", on_click=cycle_images, args=(indexed_images, None))
+        # Handle duplicate frames. If image is duplicate of last image, download json referencing last image's image id
+        col2.button("Duplicate Frame", help="Duplicate frame", on_click=cycle_images, args=(indexed_images, image_name))
         # On click, download annotations
-        col2.button("Download Annotations", help="Download annotations as a JSON file",
+        col3.button("Download Annotations", help="Download annotations as a JSON file",
                     on_click=download_annotations, args=(image_name,))
 
+    ##############################
+    # OCR Results and Drawn Image
+    ##############################
     st.title('OCR Annotation')
-
     if 'annotations' not in st.session_state:
         st.session_state['annotations'] = []
     with st.container():
@@ -128,6 +148,9 @@ if __name__ == '__main__':
             else:
                 col2.markdown(f'**{i}:** :red[{result[1]}]')
 
+    ##############################
+    # Annotation Form
+    ##############################
     with st.form("annotation"):
         st.write("## Annotation")
         with st.container():
@@ -138,6 +161,9 @@ if __name__ == '__main__':
 
     st.write(st.session_state.annotations)
 
+    ##############################
+    # Delete Form
+    ##############################
     with st.form("delete"):
         st.write("## Delete Annotation")
         index = st.number_input(f'Index', step=1, min_value=0)
