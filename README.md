@@ -8,7 +8,7 @@
 
 ## Running in Container
 * `docker build -t annotation_env .`
-* `docker run -p 8501:8501 -v <directory_of_images>:/app/images annotation_env images`
+* `docker run -p 8501:8501 -v <directory_of_images>:/app/images annotation_env <directory_of_images>:<annotation_output_directory>`
 
 ## Usage
 * For each image, annotate each Key-Value pair in the Annotation container
