@@ -6,6 +6,10 @@
 ## Run Annotation Environment
 `streamlit run main.py <directory_of_images>`
 
+## Running in Container
+* `docker build -t annotation_env .`
+* `docker run -p 8501:8501 -v <directory_of_images>:/app/images annotation_env images`
+
 ## Usage
 * For each image, annotate each Key-Value pair in the Annotation container
 * After annotating whole image, click `Download Annotations` to download the annotations in JSON format
