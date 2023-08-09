@@ -53,8 +53,7 @@ def download_annotations(file_name):
         annotations = annotations.replace('{', f'{{\n"_image_id": "{file_name}",')
         st.session_state['image_id'] = file_name
         # Download
-        # TODO (snewman 8/8/23): Specify download location
-        with open(f'{file_name}.json', 'w') as f:
+        with open(f'{annotation_dir}/{file_name}.json', 'w') as f:
             f.write(annotations)
         st.success('Downloaded annotations')
         st.session_state['annotations'] = []
@@ -63,8 +62,7 @@ def download_annotations(file_name):
 def download_dupe_annotations(file_name):
     with st.spinner('Downloading Duplicate annotations...'):
         # Download JSON referencing image id of last image
-        # TODO (snewman 8/8/23): Specify download location
-        with open(f'{file_name}.json', 'w') as f:
+        with open(f'{annotation_dir}/{file_name}.json', 'w') as f:
             f.write(json.dumps({'_image_id': file_name, '_duplicate_image_id': st.session_state['image_id']}, indent=2))
 
 
@@ -100,9 +98,11 @@ class OCR:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('dir', type=str, help='Image directory', default='images')
+    parser.add_argument('dir', type=str, help='<Image Directory>:<Annotation Directory>', default='images')
     args = parser.parse_args()
-    image_dir = args.dir
+    dirs = args.dir.split(':')
+    image_dir = dirs[0]
+    annotation_dir = dirs[1]
     # Images will have filenames of the form <video_guid>.<frame_number>.png
     images = [image.name for image in Path(image_dir).glob('*.png')]
     indexed_images: Dict[int, str] = {i: image for i, image in enumerate(images)}
@@ -116,7 +116,10 @@ if __name__ == '__main__':
         st.session_state['image_index'] = 0
     if 'annotations' not in st.session_state:
         st.session_state['annotations'] = []
+
+    # This is the image OCR will be run on
     sample_img = cv.imread(f"{image_dir}/{indexed_images[st.session_state['image_index']]}")
+
     image_name = indexed_images[st.session_state['image_index']]
     # Remove file extension
     image_name = image_name.rsplit('.')[0]
@@ -133,7 +136,6 @@ if __name__ == '__main__':
         # Handle duplicate frames. If image is duplicate of last image, download json referencing last image's image id
         col2.button("Duplicate Frame", help="Duplicate frame", on_click=cycle_images,
                     args=(indexed_images, image_name, True))
-
 
     ##############################
     # OCR Results and Drawn Image
