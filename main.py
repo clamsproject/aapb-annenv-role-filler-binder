@@ -1,5 +1,6 @@
 import argparse
 from typing import Dict
+import os
 
 import easyocr
 import torch
@@ -112,6 +113,7 @@ if __name__ == '__main__':
     dirs = args.dir.split(':')
     image_dir = dirs[0]
     annotation_dir = dirs[1]
+    os.makedirs(f'{image_dir}/{annotation_dir}', exist_ok=True)
     # Images will have filenames of the form <video_guid>.<frame_number>.png
     images = [image.name for image in Path(image_dir).glob('*.png')]
     indexed_images: Dict[int, str] = {i: image for i, image in enumerate(images)}
@@ -131,7 +133,7 @@ if __name__ == '__main__':
 
     image_name = indexed_images[st.session_state['image_index']]
     # Remove file extension
-    image_name = image_name.rsplit('.')[0]
+    image_name = image_name.rsplit('.', 1)[0]
     ocr = run_ocr()
 
     #############################
