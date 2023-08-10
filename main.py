@@ -53,7 +53,7 @@ def download_annotations(file_name):
         annotations = annotations.replace('{', f'{{\n"_image_id": "{file_name}",')
         st.session_state['image_id'] = file_name
         # Download
-        with open(f'{annotation_dir}/{file_name}.json', 'w') as f:
+        with open(f'{image_dir}/{annotation_dir}/{file_name}.json', 'w') as f:
             f.write(annotations)
         st.success('Downloaded annotations')
         st.session_state['annotations'] = []
@@ -62,7 +62,7 @@ def download_annotations(file_name):
 def download_dupe_annotations(file_name):
     with st.spinner('Downloading Duplicate annotations...'):
         # Download JSON referencing image id of last image
-        with open(f'{annotation_dir}/{file_name}.json', 'w') as f:
+        with open(f'{image_dir}/{annotation_dir}/{file_name}.json', 'w') as f:
             f.write(json.dumps({'_image_id': file_name, '_duplicate_image_id': st.session_state['image_id']}, indent=2))
 
 
