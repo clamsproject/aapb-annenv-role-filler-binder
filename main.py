@@ -66,15 +66,24 @@ def download_dupe_annotations(file_name):
             f.write(json.dumps({'_image_id': file_name, '_duplicate_image_id': st.session_state['image_id']}, indent=2))
 
 
+def download_na_annotations(file_name):
+    with st.spinner('Downloading N/A annotations...'):
+        # Download JSON referencing image id of last image
+        with open(f'{image_dir}/{annotation_dir}/{file_name}.json', 'w') as f:
+            f.write(json.dumps({'_image_id': file_name, '_duplicate_image_id': 'N/A'}, indent=2))
+
+
 # Cycle to next image, clear annotations, rerun OCR and redraw
-def cycle_images(images, file_name, duplicate):
-    if len(st.session_state['annotations']) == 0 and not duplicate:
+def cycle_images(images, file_name, action: str):
+    if len(st.session_state['annotations']) == 0 and action == 'next':
         st.warning('Please annotate image before moving on or classify as duplicate')
         return
-    if not duplicate:
+    if action == 'next':
         download_annotations(file_name)
-    else:
+    elif action == 'dupe':
         download_dupe_annotations(file_name)
+    elif action == 'skip':
+        download_na_annotations(file_name)
     if st.session_state['image_index'] == len(images) - 1:
         st.warning('No more images to annotate')
         return
@@ -129,13 +138,16 @@ if __name__ == '__main__':
     # Top Buttons
     #############################
     with st.container():
-        col1, col2= st.columns(2)
+        col1, col2, col3 = st.columns(3)
         # On click, cycle to next image, clear annotations, save annotations, rerun OCR and redraw
         col1.button("Next Image", help="Go to next image", on_click=cycle_images,
-                    args=(indexed_images, image_name, False))
+                    args=(indexed_images, image_name, 'next'))
         # Handle duplicate frames. If image is duplicate of last image, download json referencing last image's image id
         col2.button("Duplicate Frame", help="Duplicate frame", on_click=cycle_images,
-                    args=(indexed_images, image_name, True))
+                    args=(indexed_images, image_name, 'dupe'))
+        # Skip frame for which key-value annotations are not applicable
+        col3.button("Not Applicable", help="Skip frame", on_click=cycle_images,
+                    args=(indexed_images, image_name, 'skip'))
 
     ##############################
     # OCR Results and Drawn Image
