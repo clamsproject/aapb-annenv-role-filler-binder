@@ -147,26 +147,6 @@ if __name__ == '__main__':
     image_name = image_name.rsplit('.', 1)[0]
     ocr = run_ocr()
 
-    #############################
-    # Top Buttons
-    #############################
-    with st.container():
-        col1, col2, col3, col4 = st.columns(4)
-        # On click, cycle to next image, clear annotations, save annotations, rerun OCR and redraw
-        col1.button("Next Image", help="Go to next image", on_click=cycle_images,
-                    args=(indexed_images, image_name, 'next'))
-        # Handle duplicate frames. If image is duplicate of last image, download json referencing last image's image id
-        col2.button("Duplicate Frame", help="Duplicate frame", on_click=cycle_images,
-                    args=(indexed_images, image_name, 'dupe'))
-        # Button for scrolling credits where there are new key-value annotations to add to last image
-        col3.button("Continuing Credits", help="Add new key-value annotations to last image", on_click=cycle_images,
-                    args=(indexed_images, image_name, 'cont'))
-        # Add skip reason text form
-        skip_reason = col4.text_input('Reason for skipping', key='skip_reason', value='N/A')
-        # Skip frame for which key-value annotations are not applicable
-        col4.button("Not Applicable", help="Skip frame", on_click=cycle_images,
-                    args=(indexed_images, image_name, 'skip'))
-
     ##############################
     # OCR Results and Drawn Image
     ##############################
@@ -184,6 +164,26 @@ if __name__ == '__main__':
                 col2.markdown(f'**{i}:** :orange[{result[1]}]')
             else:
                 col2.markdown(f'**{i}:** :red[{result[1]}]')
+
+    #############################
+    # Submit Buttons
+    #############################
+    with st.container():
+        col1, col2, col3, col4, col5 = st.columns(5)
+        # On click, cycle to next image, clear annotations, save annotations, rerun OCR and redraw
+        col1.button("Next Frame", help="Go to next image", on_click=cycle_images,
+                    args=(indexed_images, image_name, 'next'))
+        # Handle duplicate frames. If image is duplicate of last image, download json referencing last image's image id
+        col2.button("Duplicate Frame", help="Duplicate frame", on_click=cycle_images,
+                    args=(indexed_images, image_name, 'dupe'))
+        # Button for scrolling credits where there are new key-value annotations to add to last image
+        col3.button("Continuing Credits", help="Add new key-value annotations to last image", on_click=cycle_images,
+                    args=(indexed_images, image_name, 'cont'))
+        # Skip frame for which key-value annotations are not applicable
+        col4.button("Skip Frame", help="Skip frame", on_click=cycle_images,
+                    args=(indexed_images, image_name, 'skip'))
+        # Add skip reason text form
+        skip_reason = col5.text_input('Reason for skipping', key='skip_reason', value='N/A')
 
     ##############################
     # Annotation Form
