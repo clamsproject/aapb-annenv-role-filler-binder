@@ -37,12 +37,12 @@ def delete_annotation(index):
     st.session_state['annotations'] = annotations
 
 
-def download_annotations(file_name):
+def download_annotations(file_name, continue_annotating: bool) -> bool:
     with st.spinner('Downloading...'):
         annotations = st.session_state.annotations
         if len(annotations) == 0:
             st.warning('No annotations to download')
-            return
+            return False
         annotations_dict = {}
         for key, value in annotations:
             if key in annotations_dict:
@@ -50,14 +50,20 @@ def download_annotations(file_name):
             else:
                 annotations_dict[key] = [value]
         annotations = json.dumps(annotations_dict, indent=2)
-        # Add image id to annotations
-        annotations = annotations.replace('{', f'{{\n"_image_id": "{file_name}",')
-        st.session_state['image_id'] = file_name
+        if not continue_annotating:
+            # Add image id to annotations
+            annotations = annotations.replace('{', f'{{\n"_image_id": "{file_name}",')
+        else:
+            # Add image id and image id of last image to annotations
+            annotations = annotations.replace('{', f'{{\n"_image_id": "{file_name},'
+                                                   f'\n"_prev_image_id: {st.session_state["image_id"]},')
         # Download
         with open(f'{image_dir}/{annotation_dir}/{file_name}.json', 'w') as f:
             f.write(annotations)
+        st.session_state['image_id'] = file_name
         st.success('Downloaded annotations')
         st.session_state['annotations'] = []
+        return True
 
 
 def download_dupe_annotations(file_name):
@@ -65,13 +71,15 @@ def download_dupe_annotations(file_name):
         # Download JSON referencing image id of last image
         with open(f'{image_dir}/{annotation_dir}/{file_name}.json', 'w') as f:
             f.write(json.dumps({'_image_id': file_name, '_duplicate_image_id': st.session_state['image_id']}, indent=2))
+    return True
 
 
 def download_na_annotations(file_name):
     with st.spinner('Downloading N/A annotations...'):
         # Download JSON referencing image id of last image
         with open(f'{image_dir}/{annotation_dir}/{file_name}.json', 'w') as f:
-            f.write(json.dumps({'_image_id': file_name, '_duplicate_image_id': 'N/A'}, indent=2))
+            f.write(json.dumps({'_image_id': file_name, '_skip_reason': skip_reason}, indent=2))
+    return True
 
 
 # Cycle to next image, clear annotations, rerun OCR and redraw
@@ -80,17 +88,20 @@ def cycle_images(images, file_name, action: str):
         st.warning('Please annotate image before moving on or classify as duplicate')
         return
     if action == 'next':
-        download_annotations(file_name)
+        valid = download_annotations(file_name, False)
     elif action == 'dupe':
-        download_dupe_annotations(file_name)
+        valid = download_dupe_annotations(file_name)
     elif action == 'skip':
-        download_na_annotations(file_name)
+        valid = download_na_annotations(file_name)
+    elif action == 'cont':
+        valid = download_annotations(file_name, True)
     if st.session_state['image_index'] == len(images) - 1:
         st.warning('No more images to annotate')
         return
-    st.session_state['image_index'] = (st.session_state['image_index'] + 1)
-    st.session_state['annotations'] = []
-    st.cache_data.clear()
+    if valid:
+        st.session_state['image_index'] = (st.session_state['image_index'] + 1)
+        st.session_state['annotations'] = []
+        st.cache_data.clear()
 
 
 @st.cache_data
@@ -140,15 +151,20 @@ if __name__ == '__main__':
     # Top Buttons
     #############################
     with st.container():
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         # On click, cycle to next image, clear annotations, save annotations, rerun OCR and redraw
         col1.button("Next Image", help="Go to next image", on_click=cycle_images,
                     args=(indexed_images, image_name, 'next'))
         # Handle duplicate frames. If image is duplicate of last image, download json referencing last image's image id
         col2.button("Duplicate Frame", help="Duplicate frame", on_click=cycle_images,
                     args=(indexed_images, image_name, 'dupe'))
+        # Button for scrolling credits where there are new key-value annotations to add to last image
+        col3.button("Continuing Credits", help="Add new key-value annotations to last image", on_click=cycle_images,
+                    args=(indexed_images, image_name, 'cont'))
+        # Add skip reason text form
+        skip_reason = col4.text_input('Reason for skipping', key='skip_reason', value='N/A')
         # Skip frame for which key-value annotations are not applicable
-        col3.button("Not Applicable", help="Skip frame", on_click=cycle_images,
+        col4.button("Not Applicable", help="Skip frame", on_click=cycle_images,
                     args=(indexed_images, image_name, 'skip'))
 
     ##############################
