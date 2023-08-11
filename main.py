@@ -23,6 +23,8 @@ def draw(results, image):
 
 def annotate():
     st.session_state['annotations'].append((st.session_state.key, st.session_state.value))
+    st.session_state['key'] = ''
+    st.session_state['value'] = ''
 
 
 def delete_annotation(index):
@@ -82,6 +84,13 @@ def download_na_annotations(file_name):
     return True
 
 
+def autofill(result, slot):
+    if slot == 'key':
+        st.session_state['key'] += f" {result}"
+    elif slot == 'value':
+        st.session_state['value'] += f" {result}"
+
+
 # Cycle to next image, clear annotations, rerun OCR and redraw
 def cycle_images(images, file_name, action: str):
     if len(st.session_state['annotations']) == 0 and action == 'next':
@@ -132,7 +141,7 @@ if __name__ == '__main__':
     #############################
     # Streamlit
     #############################
-    st.set_page_config(layout="centered")
+    st.set_page_config(layout="wide")
     # Load first image
     if 'image_index' not in st.session_state:
         st.session_state['image_index'] = 0
@@ -154,16 +163,27 @@ if __name__ == '__main__':
     if 'annotations' not in st.session_state:
         st.session_state['annotations'] = []
     with st.container():
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         col1.image(sample_img)
         col1.image(ocr.annotated_image)
+        col2.markdown(f'**KEY**')
+        col3.markdown(f'**VALUE**')
         for i, result in enumerate(ocr.results):
             if result[2] > 0.8:
-                col2.markdown(f'**{i}:** :green[{result[1]}]')
+                col2.button(f'{i}: :green[{result[1]}]', help='Click to annotate', on_click=autofill,
+                            args=(result[1], 'key'), key=f"key_{result[1]}")
+                col3.button(f'{i}: :green[{result[1]}]', help='Click to annotate', on_click=autofill,
+                            args=(result[1], 'value'), key=f"value_{result[1]}")
             elif result[2] > 0.5:
-                col2.markdown(f'**{i}:** :orange[{result[1]}]')
+                col2.button(f'{i}: :orange[{result[1]}]', help='Click to annotate', on_click=autofill,
+                            args=(result[1], 'key'), key=f"key_{result[1]}")
+                col3.button(f'{i}: :orange[{result[1]}]', help='Click to annotate', on_click=autofill,
+                            args=(result[1], 'value'), key=f"value_{result[1]}")
             else:
-                col2.markdown(f'**{i}:** :red[{result[1]}]')
+                col2.button(f'{i}: :red[{result[1]}]', help='Click to annotate', on_click=autofill,
+                            args=(result[1], 'key'), key=f"key_{result[1]}")
+                col3.button(f'{i}: :red[{result[1]}]', help='Click to annotate', on_click=autofill,
+                            args=(result[1], 'value'), key=f"value_{result[1]}")
 
     #############################
     # Submit Buttons
@@ -192,8 +212,8 @@ if __name__ == '__main__':
         st.write("## Annotation")
         with st.container():
             col1, col2 = st.columns(2)
-            col1.text_input(f'Key', key='key')
-            col2.text_input(f'Value', key='value')
+            col1.text_input(f'Key', key='key', value=st.session_state['key'] if 'key' in st.session_state else '')
+            col2.text_input(f'Value', key='value', value=st.session_state['value'] if 'value' in st.session_state else '')
         st.form_submit_button("Add New Key-Value Pair", on_click=annotate)
 
     st.write(st.session_state.annotations)
