@@ -125,9 +125,15 @@ def download_na_annotations(file_name):
 
 def autofill(result, slot):
     if slot == 'key':
-        st.session_state['key'] += f" {result}"
+        if st.session_state['key'] == '':
+            st.session_state['key'] += result
+        else:
+            st.session_state['key'] += f" {result}"
     elif slot == 'value':
-        st.session_state['value'] += f" {result}"
+        if st.session_state['value'] == '':
+            st.session_state['value'] += result
+        else:
+            st.session_state['value'] += f" {result}"
 
 
 # Cycle to next image, clear annotations, rerun OCR and redraw
