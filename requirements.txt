@@ -1,3 +1,6 @@
 easyocr~=1.7.0
 torch~=2.0.1
 streamlit~=1.25.0
+Pillow==9.5.0
+clams-python==1.0.9
+mmif-python[cv]==1.0.8
