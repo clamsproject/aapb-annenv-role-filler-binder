@@ -12,7 +12,8 @@
 `streamlit run main.py <directory_of_images>:<annotation_output_directory>`
 
 ## Running in Container
-**Note:** Containerization does not currently support the OCR preprocessing step.
+> **Note:** Containerization does not currently support the OCR preprocessing step.
+> Running in a container will require the user to run the OCR preprocessing step first
 * `docker build -t annotation_env .`
 * `docker run -p 8501:8501 -v <directory_of_images>:/app/images annotation_env <directory_of_images>:<annotation_output_directory>`
 
