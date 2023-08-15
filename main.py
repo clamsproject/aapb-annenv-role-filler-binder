@@ -21,7 +21,7 @@ def draw(results, image):
         annotated_img = cv.rectangle(annotated_img, (int(top_left[0]), int(top_left[1])),
                                      (int(bottom_right[0]), int(bottom_right[1])), (255, 0, 0), 3)
         annotated_img = cv.putText(annotated_img, str(i), (int(top_left[0]), int(top_left[1])),
-                                   cv.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3, cv.LINE_AA)
+                                   cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3, cv.LINE_AA)
     return annotated_img
 
 
@@ -173,7 +173,7 @@ class OCR:
     def __init__(self, image):
         self.reader = easyocr.Reader(['en'], gpu=True if torch.cuda.is_available() else False)
         self.image = image
-        self.results = self.reader.readtext(self.image)
+        self.results = self.reader.readtext(self.image, width_ths=0.3)  # smaller width_ths -> more split results
         self.annotated_image = draw(self.results, self.image)
 
 
