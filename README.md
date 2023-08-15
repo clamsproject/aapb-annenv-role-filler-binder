@@ -3,6 +3,9 @@
 ## Installation
 `pip install -r requirements.txt`
 
+## Run OCR Preprocessing
+`python ocr.py <directory_of_images>`
+
 ## Run Annotation Environment
 `streamlit run main.py <directory_of_images>:<annotation_output_directory>`
 
