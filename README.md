@@ -1,7 +1,9 @@
 # Annotation Environment for Credits and Slates parsing
 
 ## Installation
-`pip install -r requirements.txt`
+* Create a virtual environment `conda create -n annotate python=3.8`
+* Activate the virtual environment `conda activate annotate`
+* Install the app requirements `pip install -r requirements.txt`
 
 ## Run OCR Preprocessing
 `python ocr.py <directory_of_images>`
@@ -10,6 +12,7 @@
 `streamlit run main.py <directory_of_images>:<annotation_output_directory>`
 
 ## Running in Container
+**Note:** Containerization does not currently support the OCR preprocessing step.
 * `docker build -t annotation_env .`
 * `docker run -p 8501:8501 -v <directory_of_images>:/app/images annotation_env <directory_of_images>:<annotation_output_directory>`
 
