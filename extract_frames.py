@@ -2,6 +2,7 @@ import argparse
 import re
 from mmif import Mmif, View, AnnotationTypes, Document, DocumentTypes
 from mmif.utils import video_document_helper as vdh
+from PIL import Image
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -12,8 +13,8 @@ if __name__ == '__main__':
 
     mmif = Mmif(open(args.mmif).read())
     vd = mmif.get_documents_by_type(DocumentTypes.VideoDocument)[0]
-    guid = re.search(r'cpb-aacip[-_]\d{3}-[0-9a-z]', vd.properties.location_path_resolved()).group(0)
-    video_name = vd.properties.location_path_resolved()
+    guid = re.search(r'cpb-aacip[-_]\d{3}-[0-9a-z]', vd.properties.location).group(0)
+    # video_name = vd.properties.location_path_resolved()
     view = mmif.get_views_for_document(vd.properties.id)[0]
     annotations = view.get_annotations(AnnotationTypes.TimeFrame)
 
@@ -28,4 +29,5 @@ if __name__ == '__main__':
             images.append((frame_num, frame))
 
     for frame_num, frame in images:
+        frame = Image.fromarray(frame)
         frame.save(f'{image_dir}/{guid}.{str(frame_num).zfill(4)}.png')
