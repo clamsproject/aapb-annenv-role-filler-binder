@@ -12,12 +12,16 @@ from pathlib import Path
 
 def draw(results, image):
     annotated_img = image.copy()
+    if len(results) == 0:
+        st.warning('No results to draw')
+        return annotated_img
     for i, result in enumerate(results):
         top_left = tuple(result[0][0])
         bottom_right = tuple(result[0][2])
-        annotated_img = cv.rectangle(annotated_img, top_left, bottom_right, (255, 0, 0), 3)
-        annotated_img = cv.putText(annotated_img, str(i), top_left, cv.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3,
-                                   cv.LINE_AA)
+        annotated_img = cv.rectangle(annotated_img, (int(top_left[0]), int(top_left[1])),
+                                     (int(bottom_right[0]), int(bottom_right[1])), (255, 0, 0), 3)
+        annotated_img = cv.putText(annotated_img, str(i), (int(top_left[0]), int(top_left[1])),
+                                   cv.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3, cv.LINE_AA)
     return annotated_img
 
 
@@ -112,6 +116,7 @@ def download_dupe_annotations(file_name):
         # Download JSON referencing image id of last image
         with open(f'{image_dir}/{annotation_dir}/{file_name}.json', 'w') as f:
             f.write(json.dumps({'_image_id': file_name, '_duplicate_image_id': st.session_state['image_id']}, indent=2))
+    st.session_state['image_id'] = file_name
     return True
 
 
@@ -120,6 +125,7 @@ def download_na_annotations(file_name):
         # Download JSON referencing image id of last image
         with open(f'{image_dir}/{annotation_dir}/{file_name}.json', 'w') as f:
             f.write(json.dumps({'_image_id': file_name, '_skip_reason': skip_reason}, indent=2))
+    st.session_state['image_id'] = file_name
     return True
 
 
