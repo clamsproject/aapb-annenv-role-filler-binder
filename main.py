@@ -2,8 +2,7 @@ import argparse
 from typing import Dict
 import os
 
-import easyocr
-import torch
+import pickle
 import cv2 as cv
 import streamlit as st
 import json
@@ -164,16 +163,26 @@ def cycle_images(images, file_name, action: str):
         st.cache_data.clear()
 
 
+def load_results(image_name):
+    """
+    Load results from OCR
+    :param image_name:
+    :return:
+    """
+    with open(f'{image_dir}/ocr/{image_name}', 'rb') as f:
+        results = pickle.load(f)
+    return results
+
+
 @st.cache_data
-def run_ocr():
-    return OCR(sample_img)
+def load_ocr():
+    return OCR(sample_img, results)
 
 
 class OCR:
-    def __init__(self, image):
-        self.reader = easyocr.Reader(['en'], gpu=True if torch.cuda.is_available() else False)
+    def __init__(self, image, results):
         self.image = image
-        self.results = self.reader.readtext(self.image, width_ths=0.3)  # smaller width_ths -> more split results
+        self.results = results
         self.annotated_image = draw(self.results, self.image)
 
 
@@ -201,13 +210,15 @@ if __name__ == '__main__':
     if 'annotations' not in st.session_state:
         st.session_state['annotations'] = []
 
-    # This is the image OCR will be run on
+    # This is the image that will be annotated
     sample_img = cv.imread(f"{image_dir}/{indexed_images[st.session_state['image_index']]}")
+    # load results for image
+    results = load_results(indexed_images[st.session_state['image_index']].rsplit('.', 1)[0])
 
     image_name = indexed_images[st.session_state['image_index']]
     # Remove file extension
     image_name = image_name.rsplit('.', 1)[0]
-    ocr = run_ocr()
+    ocr = load_ocr()
 
     ##############################
     # OCR Results and Drawn Image
