@@ -11,17 +11,17 @@
 ## Run Annotation Environment
 `streamlit run main.py <directory_of_images>:<annotation_output_directory>`
 
-## Running in Container
-> **Note:** Containerization does not currently support the OCR preprocessing step.
-> Running in a container will require the user to run the OCR preprocessing step first
-* `docker build -t annotation_env .`
-* `docker run -p 8501:8501 -v <directory_of_images>:/app/images annotation_env <directory_of_images>:<annotation_output_directory>`
-
 ### Input and Output Directories
 * `<directory_of_images>` is the directory containing the images to be annotated and is the only
 volume that can be mounted to the container image
 * `<annotation_output_directory>` is the directory where the annotations will be saved. This directory will always
 be a subdirectory of the mounted volume `<directory_of_images>`
+
+## Running in Container
+> **Note:** Containerization does not currently support the OCR preprocessing step.
+> Running in a container will require the user to run the OCR preprocessing step first
+* `docker build -t annotation_env .`
+* `docker run -p 8501:8501 -v <directory_of_images>:/app/images annotation_env <directory_of_images>:<annotation_output_directory>`
 
 ## Usage
 * For each image, annotate each Key-Value pair in the Annotation container
