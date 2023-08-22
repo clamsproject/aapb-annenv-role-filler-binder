@@ -7,6 +7,7 @@ import cv2 as cv
 import streamlit as st
 import json
 from pathlib import Path
+import random
 
 
 def draw(results, image):
@@ -235,19 +236,19 @@ if __name__ == '__main__':
         for i, result in enumerate(ocr.results):
             if result[2] > 0.8:
                 col2.button(f'{i}: :green[{result[1]}]', help='Click to annotate', on_click=autofill,
-                            args=(result[1], 'key'), key=f"key_{result[1]}")
+                            args=(result[1], 'key'), key=f"key_{result[1]}_{i}")
                 col3.button(f'{i}: :green[{result[1]}]', help='Click to annotate', on_click=autofill,
-                            args=(result[1], 'value'), key=f"value_{result[1]}")
+                            args=(result[1], 'value'), key=f"value_{result[1]}_{i}")
             elif result[2] > 0.5:
                 col2.button(f'{i}: :orange[{result[1]}]', help='Click to annotate', on_click=autofill,
-                            args=(result[1], 'key'), key=f"key_{result[1]}")
+                            args=(result[1], 'key'), key=f"key_{result[1]}_{i}")
                 col3.button(f'{i}: :orange[{result[1]}]', help='Click to annotate', on_click=autofill,
-                            args=(result[1], 'value'), key=f"value_{result[1]}")
+                            args=(result[1], 'value'), key=f"value_{result[1]}_{i}")
             else:
                 col2.button(f'{i}: :red[{result[1]}]', help='Click to annotate', on_click=autofill,
-                            args=(result[1], 'key'), key=f"key_{result[1]}")
+                            args=(result[1], 'key'), key=f"key_{result[1]}_{i}")
                 col3.button(f'{i}: :red[{result[1]}]', help='Click to annotate', on_click=autofill,
-                            args=(result[1], 'value'), key=f"value_{result[1]}")
+                            args=(result[1], 'value'), key=f"value_{result[1]}_{i}")
 
     #############################
     # Submit Buttons
