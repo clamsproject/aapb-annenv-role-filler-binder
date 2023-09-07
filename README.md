@@ -1,15 +1,39 @@
 # Annotation Environment for Credits and Slates parsing
 
 ## Installation
-`pip install -r requirements.txt`
+* Create a virtual environment `conda create -n annotate python=3.8`
+* Activate the virtual environment `conda activate annotate`
+* Install the app requirements `pip install -r requirements.txt`
+
+## Run OCR Preprocessing
+`python ocr.py <directory_of_images>`
 
 ## Run Annotation Environment
-`streamlit run main.py <directory_of_images>`
+`streamlit run main.py <directory_of_images>:<annotation_output_directory>`
+
+### Input and Output Directories
+* `<directory_of_images>` is the directory containing the images to be annotated and is the only
+volume that can be mounted to the container image
+* `<annotation_output_directory>` is the directory where the annotations will be saved. This directory will always
+be a subdirectory of the mounted volume `<directory_of_images>`
+
+## Running in Container
+> **Note:** Containerization does not currently support the OCR preprocessing step.
+> Running in a container will require the user to run the OCR preprocessing step first
+* `docker build -t annotation_env .`
+* `docker run -p 8501:8501 -v <directory_of_images>:/app/images annotation_env <directory_of_images>:<annotation_output_directory>`
 
 ## Usage
 * For each image, annotate each Key-Value pair in the Annotation container
-* After annotating whole image, click `Download Annotations` to download the annotations in JSON format
-* Click `Next Image` to move to next image
+* Click on the `KEY` or `VALUE` buttons with OCR output to copy the OCR output to the corresponding text box. Will
+append to existing text in the text box with a space in between
+* After annotating the whole image, there are four options:
+  * Click `Next Frame` to save your annotations and move to the next image
+  * Click `Continuing Credits` to append your annotations to the previous image and move to the next image. (This will 
+continue to append to the first image in this continuing chain until `Next Frame` is clicked)
+  * Click `Duplicate Frame` to mark the current image as a duplicate of the previous image
+  * Click `Skip Frame` to skip the current image after indicating the reason for skipping
+    * Could be due to an unreadable image or an image with data not applicable to the current task
 * If there is an error in the annotations for a given image, set the index in the `Delete Annotation` container to
 the index of the annotation to be deleted and click `Delete Key-Value Pair`
 * OCR output is color coded to indicate the confidence of the OCR output. 
