@@ -238,7 +238,10 @@ if __name__ == '__main__':
     st.set_page_config(layout="wide")
     # Load first image
     if 'image_index' not in st.session_state:
-        st.session_state['image_index'] = 0
+        img_idx = 0
+        while get_progress_guid_fnum(*indexed_images[img_idx]):
+            img_idx += 1
+        st.session_state['image_index'] = img_idx
     if 'annotations' not in st.session_state:
         st.session_state['annotations'] = []
 
