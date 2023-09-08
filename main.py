@@ -9,6 +9,9 @@ import cv2 as cv
 import streamlit as st
 
 
+def get_annotation_fname(image_name):
+    return f'{image_dir}/{annotation_dir}/{image_name}.json'
+
 def draw(results, image):
     annotated_img = image.copy()
     if len(results) == 0:
@@ -59,7 +62,7 @@ def download_annotations(file_name) -> bool:
         annotations = json.dumps(annotations_dict, indent=2)
         annotations = annotations.replace('{', f'{{\n"_image_id": "{file_name}",')
         # Download
-        with open(f'{image_dir}/{annotation_dir}/{file_name}.json', 'w') as f:
+        with open(get_annotation_fname(file_name), 'w') as f:
             f.write(annotations)
         st.session_state['image_id'] = file_name
         st.success('Downloaded annotations')
@@ -89,7 +92,7 @@ def continue_annotations(file_name):
                 annotations_dict[key] = [value]
         # Append annotations to existing annotation file for the image that started this series of continuing credits
         # annotations
-        with open(f'{image_dir}/{annotation_dir}/{st.session_state["first_credit_image_id"]}.json', 'r') as f:
+        with open(get_annotation_fname(st.session_state["first_credit_image_id"]), 'r') as f:
             existing_annotations = json.load(f)
         for key, value in annotations_dict.items():
             if key in existing_annotations:
@@ -98,10 +101,10 @@ def continue_annotations(file_name):
                 existing_annotations[key] = value
         annotations = json.dumps(existing_annotations, indent=2)
         # Download
-        with open(f'{image_dir}/{annotation_dir}/{st.session_state["first_credit_image_id"]}.json', 'w') as f:
+        with open(get_annotation_fname(st.session_state["first_credit_image_id"]), 'w') as f:
             f.write(annotations)
         # Save reference to first image in series of continuing credits annotations in this image annotation file
-        with open(f'{image_dir}/{annotation_dir}/{file_name}.json', 'w') as f:
+        with open(get_annotation_fname(file_name), 'w') as f:
             f.write(json.dumps({'_image_id': file_name,
                                 '_first_credit_image_id': st.session_state['first_credit_image_id']}, indent=2))
         st.session_state['image_id'] = file_name
@@ -113,7 +116,7 @@ def continue_annotations(file_name):
 def download_dupe_annotations(file_name):
     with st.spinner('Downloading Duplicate annotations...'):
         # Download JSON referencing image id of last image
-        with open(f'{image_dir}/{annotation_dir}/{file_name}.json', 'w') as f:
+        with open(get_annotation_fname(file_name), 'w') as f:
             f.write(json.dumps({'_image_id': file_name, '_duplicate_image_id': st.session_state['image_id']}, indent=2))
     st.session_state['image_id'] = file_name
     return True
@@ -122,7 +125,7 @@ def download_dupe_annotations(file_name):
 def download_na_annotations(file_name):
     with st.spinner('Downloading N/A annotations...'):
         # Download JSON referencing image id of last image
-        with open(f'{image_dir}/{annotation_dir}/{file_name}.json', 'w') as f:
+        with open(get_annotation_fname(file_name), 'w') as f:
             f.write(json.dumps({'_image_id': file_name, '_skip_reason': skip_reason}, indent=2))
     st.session_state['image_id'] = file_name
     return True
@@ -194,8 +197,6 @@ if __name__ == '__main__':
     image_dir = dirs[0]
     annotation_dir = dirs[1]
     os.makedirs(f'{image_dir}/{annotation_dir}', exist_ok=True)
-    
-    
     # Images will have filenames of the form <video_guid>.<frame_number>.png
     images = [image.name for image in Path(image_dir).glob('*.png')]
     # Sort images
