@@ -1,13 +1,12 @@
 import argparse
-from typing import Dict
+import json
 import os
-
 import pickle
+from pathlib import Path
+from typing import Dict
+
 import cv2 as cv
 import streamlit as st
-import json
-from pathlib import Path
-import random
 
 
 def draw(results, image):
@@ -195,6 +194,8 @@ if __name__ == '__main__':
     image_dir = dirs[0]
     annotation_dir = dirs[1]
     os.makedirs(f'{image_dir}/{annotation_dir}', exist_ok=True)
+    
+    
     # Images will have filenames of the form <video_guid>.<frame_number>.png
     images = [image.name for image in Path(image_dir).glob('*.png')]
     # Sort images
@@ -225,31 +226,7 @@ if __name__ == '__main__':
     # OCR Results and Drawn Image
     ##############################
     st.title('OCR Annotation')
-    if 'annotations' not in st.session_state:
-        st.session_state['annotations'] = []
-    with st.container():
-        col1, col2, col3 = st.columns(3)
-        col1.image(sample_img)
-        col1.image(ocr.annotated_image)
-        col2.markdown(f'**KEY**')
-        col3.markdown(f'**VALUE**')
-        for i, result in enumerate(ocr.results):
-            if result[2] > 0.8:
-                col2.button(f'{i}: :green[{result[1]}]', help='Click to annotate', on_click=autofill,
-                            args=(result[1], 'key'), key=f"key_{result[1]}_{i}")
-                col3.button(f'{i}: :green[{result[1]}]', help='Click to annotate', on_click=autofill,
-                            args=(result[1], 'value'), key=f"value_{result[1]}_{i}")
-            elif result[2] > 0.5:
-                col2.button(f'{i}: :orange[{result[1]}]', help='Click to annotate', on_click=autofill,
-                            args=(result[1], 'key'), key=f"key_{result[1]}_{i}")
-                col3.button(f'{i}: :orange[{result[1]}]', help='Click to annotate', on_click=autofill,
-                            args=(result[1], 'value'), key=f"value_{result[1]}_{i}")
-            else:
-                col2.button(f'{i}: :red[{result[1]}]', help='Click to annotate', on_click=autofill,
-                            args=(result[1], 'key'), key=f"key_{result[1]}_{i}")
-                col3.button(f'{i}: :red[{result[1]}]', help='Click to annotate', on_click=autofill,
-                            args=(result[1], 'value'), key=f"value_{result[1]}_{i}")
-
+    
     #############################
     # Submit Buttons
     #############################
@@ -269,18 +246,43 @@ if __name__ == '__main__':
                     args=(indexed_images, image_name, 'skip'))
         # Add skip reason text form
         skip_reason = col5.text_input('Reason for skipping', key='skip_reason')
-
-    ##############################
-    # Annotation Form
-    ##############################
+        
     with st.form("annotation"):
-        st.write("## Annotation")
+        st.write("## Add Annotation")
         with st.container():
             col1, col2 = st.columns(2)
             col1.text_input(f'Key', key='key', value=st.session_state['key'] if 'key' in st.session_state else '')
             col2.text_input(f'Value', key='value', value=st.session_state['value'] if 'value' in st.session_state else '')
         st.form_submit_button("Add New Key-Value Pair", on_click=annotate)
+    if 'annotations' not in st.session_state:
+        st.session_state['annotations'] = []
+    with st.container():
+        img_col, ocr_col, col2, col3 = st.columns([3,1,1,1])
+        img_col.image(sample_img)
+        img_col.image(ocr.annotated_image)
+        #  ocr_col.markdown(f'**OCR Results**')
+        #  col2.markdown(f'**KEY**')
+        #  col3.markdown(f'**VALUE**')
+        for i, result in enumerate(ocr.results):
+            if result[2] > 0.8:
+                color = 'green'
+            elif result[2] > 0.5:
+                color = 'orange'
+            else:
+                color = 'red'
+            ocr_col.button(f'{i}: :{color}[{result[1]}]')
 
+            col2.button(f'append to KEY', help='Click to annotate', on_click=autofill,
+                        args=(result[1], 'key'), key=f"key_{result[1]}_{i}")
+            col3.button(f'append to VALUE', help='Click to annotate', on_click=autofill,
+                            args=(result[1], 'value'), key=f"value_{result[1]}_{i}")
+
+
+    ##############################
+    # Annotation Form
+    ##############################
+
+    st.markdown('## Current Annotations')
     st.write(st.session_state.annotations)
 
     ##############################
