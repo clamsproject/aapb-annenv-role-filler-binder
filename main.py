@@ -63,16 +63,11 @@ def add_pair():
     st.toast(f'"{v.split(DELIM)}" added to "{k}"')
 
 
-def delete_pair(index):
+def delete_pair(key):
     if len(st.session_state['annotations']) == 0:
         st.warning('No annotations to delete')
         return
-    if index < 0 or index >= len(st.session_state['annotations']):
-        st.warning('Index out of range')
-        return
-    annotations = list(st.session_state['annotations'])
-    annotations.pop(index)
-    st.session_state['annotations'] = annotations
+    st.session_state['annotations'].pop(key)
 
 
 def save_pairs(guid, fnum, continuing=True):
@@ -309,7 +304,11 @@ if __name__ == '__main__':
     ##############################
     # Annotation Editor 
     ##############################
-    with st.form("delete"):
-        st.write("## Delete Annotation")
-        index = st.number_input(f'Index', step=1, min_value=0)
-        st.form_submit_button("Delete Key-Value Pair", on_click=delete_pair, args=(index,))
+    st.write("## Delete Annotation")
+    opts = list(st.session_state['annotations'].keys())
+    if not opts:
+        st.warning('No annotations to delete')
+    else:
+        k = st.selectbox(f'Select {KEY} to delete', options=opts, index=0,
+                         format_func=lambda x: f'"{x}"' if x else "EMPTY KEY")
+        st.button(f"Delete {KEY}-{VALUE} Pair", on_click=delete_pair, args=(k,))
