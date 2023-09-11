@@ -7,6 +7,11 @@ from pathlib import Path
 import cv2 as cv
 import streamlit as st
 
+KEY = 'key'
+VALUE = 'value'
+DELIM = ' && '
+REASON_DUPE = 'DUPLICATE'
+
 
 def get_image_id(guid, fnum):
     return '.'.join(map(str, [guid, fnum]))
@@ -28,7 +33,6 @@ def get_progress_guid(guid, string=False):
         return done, total
 
 
-
 def get_progress_guid_fnum(guid, fnum):
     return get_annotation_fname(guid, fnum).exists()
 
@@ -48,13 +52,17 @@ def draw(results, image):
     return annotated_img
 
 
-def annotate():
-    st.session_state['annotations'].append((st.session_state.key, st.session_state.value))
-    st.session_state['key'] = ''
-    st.session_state['value'] = ''
+def add_pair():
+    d = defaultdict(list, st.session_state['annotations'])
+    k = st.session_state[KEY]
+    v = st.session_state[VALUE]
+    d[k].append(v.split(DELIM))
+    st.session_state['annotations'] = d
+    st.session_state[KEY] = ''
+    st.session_state[VALUE] = ''
 
 
-def delete_annotation(index):
+def delete_pair(index):
     if len(st.session_state['annotations']) == 0:
         st.warning('No annotations to delete')
         return
@@ -66,125 +74,79 @@ def delete_annotation(index):
     st.session_state['annotations'] = annotations
 
 
-def save_annotation(guid, fnum) -> bool:
-    with st.spinner('Saving...'):
-        annotations = st.session_state.annotations
-        if len(annotations) == 0:
-            st.warning('No annotations to save')
-            return False
-        # Reset continuing credits
-        st.session_state['first_credit_image_id'] = None
-        annotations_dict = {}
-        for key, value in annotations:
-            if key in annotations_dict:
-                annotations_dict[key].append(value)
-            else:
-                annotations_dict[key] = [value]
-        annotations = json.dumps(annotations_dict, indent=2)
-        annotations = annotations.replace('{', f'{{\n"_image_id": "{get_image_id(guid, fnum)}",')
-        # Download
-        with open(get_annotation_fname(guid, fnum), 'w') as f:
-            f.write(annotations)
-        st.session_state['image_id'] = get_image_id(guid, fnum)
-        st.success('Downloaded annotations')
-        st.session_state['annotations'] = []
-        return True
-
-
-def continue_annotations(file_name):
+def save_pairs(guid, fnum, continuing=True):
     """
     Append annotations to the existing annotation file for the image that started this series of continuing credits
     annotations
-    :param file_name:
-    :return:
     """
     with st.spinner('Saving...'):
-        if st.session_state['first_credit_image_id'] is None:
-            st.session_state['first_credit_image_id'] = st.session_state['image_id']
-        annotations = st.session_state.annotations
+        if continuing and st.session_state['first_credit_image_id'] is None:
+            st.warning('No existing annotation to append current pairs, failed to save annotations as "continuing"')
+            return False
+        annotations = st.session_state['annotations']
         if len(annotations) == 0:
             st.warning('No annotations to save')
             return False
-        annotations_dict = {}
-        for key, value in annotations:
-            if key in annotations_dict:
-                annotations_dict[key].append(value)
-            else:
-                annotations_dict[key] = [value]
-        # Append annotations to existing annotation file for the image that started this series of continuing credits
-        # annotations
-        with open(get_annotation_fname(st.session_state["first_credit_image_id"]), 'r') as f:
-            existing_annotations = json.load(f)
-        for key, value in annotations_dict.items():
-            if key in existing_annotations:
-                existing_annotations[key].extend(value)
-            else:
-                existing_annotations[key] = value
-        annotations = json.dumps(existing_annotations, indent=2)
-        # Download
-        with open(get_annotation_fname(st.session_state["first_credit_image_id"]), 'w') as f:
-            f.write(annotations)
-        # Save reference to first image in series of continuing credits annotations in this image annotation file
-        with open(get_annotation_fname(file_name), 'w') as f:
-            f.write(json.dumps({'_image_id': file_name,
-                                '_first_credit_image_id': st.session_state['first_credit_image_id']}, indent=2))
-        st.session_state['image_id'] = file_name
-        st.success('Downloaded annotations')
-        st.session_state['annotations'] = []
+        if continuing:
+            starting_fnum = int(st.session_state['starting_fnum'])
+            annotations['_continued_from'] = get_image_id(guid, starting_fnum)
+        else:
+            st.session_state['starting_fnum'] = fnum
+        annotations['_image_id'] = get_image_id(guid, fnum)
+        with open(get_annotation_fname(guid, fnum), 'w') as f:
+            f.write(json.dumps(annotations, indent=2))
+        st.success('Saved continuing annotations')
+        st.session_state['annotations'] = {}
         return True
 
 
-def save_dupe_annotations(file_name):
+def save_dupe_annotations(guid, fnum):
     with st.spinner('Downloading Duplicate annotations...'):
         # Download JSON referencing image id of last image
-        with open(get_annotation_fname(file_name), 'w') as f:
-            f.write(json.dumps({'_image_id': file_name, '_duplicate_image_id': st.session_state['image_id']}, indent=2))
-    st.session_state['image_id'] = file_name
+        with open(get_annotation_fname(guid, fnum), 'w') as f:
+            f.write(json.dumps({'_image_id': get_image_id(guid, fnum), '_skip_reason': REASON_DUPE}, indent=2))
     return True
 
 
-def save_na_annotations(file_name):
+def save_na_annotations(guid, fnum):
     with st.spinner('Downloading N/A annotations...'):
         # Download JSON referencing image id of last image
-        with open(get_annotation_fname(file_name), 'w') as f:
-            f.write(json.dumps({'_image_id': file_name, '_skip_reason': skip_reason}, indent=2))
-    st.session_state['image_id'] = file_name
+        with open(get_annotation_fname(guid, fnum), 'w') as f:
+            f.write(json.dumps({'_image_id': get_image_id(guid, fnum), '_skip_reason': skip_reason}, indent=2))
     return True
 
 
 def autofill(result, slot):
-    if slot == 'key':
-        if st.session_state['key'] == '':
-            st.session_state['key'] += result
+    if slot == KEY:
+        if st.session_state[KEY] == '':
+            st.session_state[KEY] += result
         else:
-            st.session_state['key'] += f" {result}"
-    elif slot == 'value':
-        if st.session_state['value'] == '':
-            st.session_state['value'] += result
+            st.session_state[KEY] += f" {result}"
+    elif slot == VALUE:
+        if st.session_state[VALUE] == '':
+            st.session_state[VALUE] += result
         else:
-            st.session_state['value'] += f" {result}"
+            st.session_state[VALUE] += f" {result}"
 
 
 # Cycle to next image, clear annotations, rerun OCR and redraw
 def cycle_images(images, guid, fnum, action: str):
-    file_name = get_image_id(guid, fnum)
     if len(st.session_state['annotations']) == 0 and action == 'next':
         st.warning('Please annotate image before moving on or classify as duplicate')
         return
     if action == 'next':
-        valid = save_annotation(guid, fnum)
-    elif action == 'dupe':
-        valid = save_dupe_annotations(file_name)
-    elif action == 'skip':
-        valid = save_na_annotations(file_name)
+        valid = save_pairs(guid, fnum, False)
     elif action == 'cont':
-        valid = continue_annotations(file_name)
+        valid = save_pairs(guid, fnum)
+    elif action == 'dupe':
+        valid = save_dupe_annotations(guid, fnum)
+    elif action == 'skip':
+        valid = save_na_annotations(guid, fnum)
     if st.session_state['image_index'] == len(images) - 1:
         st.warning('No more images to annotate')
         return
     if valid:
         st.session_state['image_index'] = (st.session_state['image_index'] + 1)
-        st.session_state['annotations'] = []
         st.cache_data.clear()
 
 
@@ -242,8 +204,12 @@ if __name__ == '__main__':
         while get_progress_guid_fnum(*indexed_images[img_idx]):
             img_idx += 1
         st.session_state['image_index'] = img_idx
+    ann_fname = get_annotation_fname(*indexed_images[st.session_state['image_index']])
     if 'annotations' not in st.session_state:
-        st.session_state['annotations'] = []
+        if ann_fname.exists():
+            st.session_state['annotations'] = json.load(open(ann_fname, 'r'))
+        else:
+            st.session_state['annotations'] = {}
 
     # This is the image that will be annotated
     guid, fnum = indexed_images[st.session_state['image_index']]
@@ -291,7 +257,7 @@ if __name__ == '__main__':
         col2.button("Duplicate Frame", help="Duplicate frame", on_click=cycle_images,
                     args=(indexed_images, guid, fnum, 'dupe'))
         # Button for scrolling credits where there are new key-value annotations to add to last image
-        col1.button("Continuing Credits", help="Add new key-value annotations to last image", on_click=cycle_images,
+        col1.button("Continuing Credits", help=f"Add new {KEY}-{VALUE} annotations to last image", on_click=cycle_images,
                     args=(indexed_images, guid, fnum, 'cont'))
         # Skip frame for which key-value annotations are not applicable
         col4.button("Skip Frame", help="Skip frame", on_click=cycle_images,
@@ -303,9 +269,9 @@ if __name__ == '__main__':
         st.write("## Add Annotation")
         with st.container():
             col1, col2 = st.columns(2)
-            col1.text_input(f'Key', key='key', value=st.session_state['key'] if 'key' in st.session_state else '')
-            col2.text_input(f'Value', key='value', value=st.session_state['value'] if 'value' in st.session_state else '')
-        st.form_submit_button("Add New Key-Value Pair", on_click=annotate)
+            col1.text_input(f'Key', key=KEY, value=st.session_state[KEY] if KEY in st.session_state else '')
+            col2.text_input(f'Value', key='value', value=st.session_state[VALUE] if VALUE in st.session_state else '')
+        st.form_submit_button("Add New Key-Value Pair", on_click=add_pair)
     if 'annotations' not in st.session_state:
         st.session_state['annotations'] = []
     with st.container():
@@ -325,9 +291,9 @@ if __name__ == '__main__':
             ocr_col.button(f'{i}: :{color}[{result[1]}]')
 
             col2.button(f'append to KEY', help='Click to annotate', on_click=autofill,
-                        args=(result[1], 'key'), key=f"key_{result[1]}_{i}")
+                        args=(result[1], KEY), key=f"key_{result[1]}_{i}")
             col3.button(f'append to VALUE', help='Click to annotate', on_click=autofill,
-                            args=(result[1], 'value'), key=f"value_{result[1]}_{i}")
+                            args=(result[1], VALUE), key=f"value_{result[1]}_{i}")
 
     ##############################
     # Annotation Form
@@ -342,4 +308,4 @@ if __name__ == '__main__':
     with st.form("delete"):
         st.write("## Delete Annotation")
         index = st.number_input(f'Index', step=1, min_value=0)
-        st.form_submit_button("Delete Key-Value Pair", on_click=delete_annotation, args=(index,))
+        st.form_submit_button("Delete Key-Value Pair", on_click=delete_pair, args=(index,))
