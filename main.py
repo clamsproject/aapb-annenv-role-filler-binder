@@ -56,10 +56,11 @@ def add_pair():
     d = defaultdict(list, st.session_state['annotations'])
     k = st.session_state[KEY]
     v = st.session_state[VALUE]
-    d[k].append(v.split(DELIM))
+    d[k].extend(v.split(DELIM))
     st.session_state['annotations'] = d
     st.session_state[KEY] = ''
     st.session_state[VALUE] = ''
+    st.toast(f'"{v.split(DELIM)}" added to "{k}"')
 
 
 def delete_pair(index):
@@ -95,7 +96,8 @@ def save_pairs(guid, fnum, continuing=True):
         annotations['_image_id'] = get_image_id(guid, fnum)
         with open(get_annotation_fname(guid, fnum), 'w') as f:
             f.write(json.dumps(annotations, indent=2))
-        st.success('Saved continuing annotations')
+        st.success('Saved annotations')
+        st.toast('Saved annotations')
         st.session_state['annotations'] = {}
         return True
 
@@ -293,6 +295,7 @@ if __name__ == '__main__':
         else:
             delim_str = f'type "{DELIM}" in the text field'
         st.button(f'Add a delimiter to values field (to manually type a delimiter, {delim_str}).', key=f'delim_{i}', on_click=autofill, args=(DELIM, VALUE), use_container_width=True)
+        b = st.button("extra 'add' button", key=f'add_{i}', on_click=add_pair)
         st.divider()
         st.image([sample_img, ocr.annotated_image])
 
@@ -301,7 +304,6 @@ if __name__ == '__main__':
     ##############################
 
     st.markdown('## Current Annotations')
-    print(st.session_state['annotations'])
     st.write(st.session_state['annotations'])
 
     ##############################
