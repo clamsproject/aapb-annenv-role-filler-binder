@@ -9,7 +9,7 @@ import streamlit as st
 
 KEY = 'key'
 VALUE = 'value'
-DELIM = ' && '
+DELIM = '\n'
 REASON_DUPE = 'DUPLICATE'
 
 
@@ -118,13 +118,13 @@ def save_na_annotations(guid, fnum):
 
 def autofill(result, slot):
     if slot == KEY:
-        if st.session_state[KEY] == '':
-            st.session_state[KEY] += result
+        if not st.session_state[KEY]:
+            st.session_state[KEY] = result
         else:
             st.session_state[KEY] += f" {result}"
     elif slot == VALUE:
-        if st.session_state[VALUE] == '':
-            st.session_state[VALUE] += result
+        if not st.session_state[VALUE]:
+            st.session_state[VALUE] = result
         else:
             st.session_state[VALUE] += f" {result}"
 
@@ -219,91 +219,93 @@ if __name__ == '__main__':
     image_name = get_image_id(guid, fnum)
     ocr = OCR(sample_img, results)
 
-    ##############################
-    # OCR Results and Drawn Image
-    ##############################
     st.title('OCR Annotation')
-    st.markdown(f'Current image: video: {guid}, frame: {fnum}')
-    st.markdown(f'Last "significant" image: {st.session_state["image_id"] if "image_id" in st.session_state else "None"}')
+    st.divider()
 
-    #############################
-    # Image Navigation
-    #############################
-    nav_guid_col, nav_fnum_col, nav_submit_col = st.columns(3)
-    with nav_guid_col:
+    img_col, nav_col, skip_col = st.columns((7, 2, 1))
+    with img_col:
+        ##############################
+        # Drawn Image
+        ##############################
+        st.subheader(f'Current image: `{guid}` {fnum}')
+        st.markdown(f'Last "significant" frame: {st.session_state["starting_fnum"] if "starting_fnum" in st.session_state else "None"}')
+        st.caption(f':red[TODO]: explain what "significant" means in the guidelines')
+        st.image([sample_img, ocr.annotated_image])
+    with nav_col:
+        #############################
+        # Image Navigation
+        #############################
+        st.subheader('Data Navigator')
         ops = list(guids.keys())
         idx = ops.index(guid)
         nav_guid_picker = st.selectbox('Select video', options=ops, index=idx, 
                                        format_func=lambda x: f'{x} ({get_progress_guid(x, string=True)})')
-    with nav_fnum_col:
         ops = guids[nav_guid_picker]
         idx = ops.index(fnum) if nav_guid_picker == guid else 0
         nav_fnum_picker = st.selectbox('Select frame', options=ops, index=idx, 
                                        format_func=lambda x: f'{x} {"✅" if get_progress_guid_fnum(nav_guid_picker, x) else "❌"}')
-        
-    with nav_submit_col:
         st.button('Go', help='Go to selected image', on_click=lambda: st.session_state.update({'image_index': revindex_images[(nav_guid_picker, nav_fnum_picker)]}))
-    st.divider()
-
-    #############################
-    # Submit Buttons
-    #############################
-    with st.container():
-        col1, col2, col3, col4, col5 = st.columns(5)
+    with skip_col:
+        #############################
+        # "Skip" Buttons
+        #############################
         # On click, cycle to next image, clear annotations, save annotations, rerun OCR and redraw
-        col3.button("Next Frame", help="Go to next image", on_click=cycle_images,
-                    args=(indexed_images, guid, fnum, 'next'))
+        st.button("Next Frame", help="Go to next image", on_click=cycle_images, args=(indexed_images, guid, fnum, 'next'))
         # Handle duplicate frames. If image is duplicate of last image, save json referencing last image's image id
-        col2.button("Duplicate Frame", help="Duplicate frame", on_click=cycle_images,
-                    args=(indexed_images, guid, fnum, 'dupe'))
+        st.button("Duplicate Frame", help="Duplicate frame", on_click=cycle_images, args=(indexed_images, guid, fnum, 'dupe'))
         # Button for scrolling credits where there are new key-value annotations to add to last image
-        col1.button("Continuing Credits", help=f"Add new {KEY}-{VALUE} annotations to last image", on_click=cycle_images,
-                    args=(indexed_images, guid, fnum, 'cont'))
+        st.button("Continuing Credits", help=f"Add new {KEY}-{VALUE} annotations to last image", on_click=cycle_images, args=(indexed_images, guid, fnum, 'cont'))
         # Skip frame for which key-value annotations are not applicable
-        col4.button("Skip Frame", help="Skip frame", on_click=cycle_images,
-                    args=(indexed_images, guid, fnum, 'skip'))
+        st.button("Skip Frame", help="Skip frame", on_click=cycle_images, args=(indexed_images, guid, fnum, 'skip'))
         # Add skip reason text form
-        skip_reason = col5.text_input('Reason for skipping', key='skip_reason')
-        
+        skip_reason = st.text_area('Reason for skipping', key='skip_reason')
+    st.divider()
+    
     with st.form("annotation"):
         st.write("## Add Annotation")
-        with st.container():
-            col1, col2 = st.columns(2)
-            col1.text_input(f'Key', key=KEY, value=st.session_state[KEY] if KEY in st.session_state else '')
-            col2.text_input(f'Value', key='value', value=st.session_state[VALUE] if VALUE in st.session_state else '')
-        st.form_submit_button("Add New Key-Value Pair", on_click=add_pair)
-    if 'annotations' not in st.session_state:
-        st.session_state['annotations'] = []
-    with st.container():
-        img_col, ocr_col, col2, col3 = st.columns([3,1,1,1])
-        img_col.image(sample_img)
-        img_col.image(ocr.annotated_image)
-        #  ocr_col.markdown(f'**OCR Results**')
-        #  col2.markdown(f'**KEY**')
-        #  col3.markdown(f'**VALUE**')
-        for i, result in enumerate(ocr.results):
-            if result[2] > 0.8:
-                color = 'green'
-            elif result[2] > 0.5:
-                color = 'orange'
-            else:
-                color = 'red'
-            ocr_col.button(f'{i}: :{color}[{result[1]}]')
+        col1, col2 = st.columns(2)
+        col1.text_input(f'Key', key=KEY, value=st.session_state[KEY] if KEY in st.session_state else '')
+        col2.text_area(f'Value', key=VALUE, value=st.session_state[VALUE] if VALUE in st.session_state else '')
+        add_pair_btn = st.form_submit_button("Add a new pair", on_click=add_pair)
 
-            col2.button(f'append to KEY', help='Click to annotate', on_click=autofill,
-                        args=(result[1], KEY), key=f"key_{result[1]}_{i}")
-            col3.button(f'append to VALUE', help='Click to annotate', on_click=autofill,
-                            args=(result[1], VALUE), key=f"value_{result[1]}_{i}")
+    for i in range(len(ocr.results) // 4 + 1):
+        cols = st.columns(4)
+        for j in range(4):
+            with cols[j]:
+                r_idx = i * 4 + j
+                if r_idx >= len(ocr.results):
+                    break
+                result = ocr.results[r_idx]
+                if result[2] > 0.8:
+                    color = 'green'
+                elif result[2] > 0.5:
+                    color = 'orange'
+                else:
+                    color = 'red'
+                st.markdown(f'{r_idx}: :{color}[{result[1]}]')
+                st.button(f'append to `{KEY}`', help='Click to annotate',
+                          on_click=autofill,
+                          args=(result[1], KEY), key=f"key_{result[1]}_{r_idx}")
+                st.button(f'append to `{VALUE}`', help='Click to annotate', on_click=autofill,
+                          args=(result[1], VALUE), key=f"value_{result[1]}_{r_idx}")
+        if DELIM == '\n':
+            delim_str = 'hit "ENTER" key while in the text field'
+        else:
+            delim_str = f'type "{DELIM}" in the text field'
+        st.button(f'Add a delimiter to values field (to manually type a delimiter, {delim_str}).', key=f'delim_{i}', on_click=autofill, args=(DELIM, VALUE), use_container_width=True)
+        st.divider()
+        st.image([sample_img, ocr.annotated_image])
 
     ##############################
-    # Annotation Form
+    # Annotation Viewer
     ##############################
 
     st.markdown('## Current Annotations')
-    st.write(st.session_state.annotations)
+    print(st.session_state['annotations'])
+    st.write(st.session_state['annotations'])
 
     ##############################
-    # Delete Form
+    # Annotation Editor 
     ##############################
     with st.form("delete"):
         st.write("## Delete Annotation")
