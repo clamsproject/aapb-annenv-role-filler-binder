@@ -55,12 +55,15 @@ def draw(results, image):
 def add_pair():
     d = defaultdict(list, st.session_state['annotations'])
     k = st.session_state[KEY]
-    v = st.session_state[VALUE]
-    d[k].extend(v.split(DELIM))
-    st.session_state['annotations'] = d
-    st.session_state[KEY] = ''
-    st.session_state[VALUE] = ''
-    st.toast(f'"{v.split(DELIM)}" added to "{k}"')
+    vs = st.session_state[VALUE]
+    if vs:
+        for v in vs.split(DELIM):
+            if v:
+                d[k].append(v)
+        st.session_state['annotations'] = d
+        st.session_state[KEY] = ''
+        st.session_state[VALUE] = ''
+        st.toast(f'"{v.split(DELIM)}" added to "{k}"')
 
 
 def delete_pair(key):
@@ -128,6 +131,8 @@ def autofill(result, slot):
 
 # Cycle to next image, clear annotations, rerun OCR and redraw
 def cycle_images(images, guid, fnum, action: str):
+    if action in ['next', 'cont']:
+        add_pair()
     if len(st.session_state['annotations']) == 0 and action == 'next':
         st.warning('Please annotate image before moving on or classify as duplicate')
         return
@@ -216,9 +221,6 @@ if __name__ == '__main__':
     image_name = get_image_id(guid, fnum)
     ocr = OCR(sample_img, results)
 
-    st.title('OCR Annotation')
-    st.divider()
-
     img_col, nav_col, skip_col = st.columns((7, 2, 1))
     with img_col:
         ##############################
@@ -239,68 +241,58 @@ if __name__ == '__main__':
                                        format_func=lambda x: f'{x} ({get_progress_guid(x, string=True)})')
         ops = guids[nav_guid_picker]
         idx = ops.index(fnum) if nav_guid_picker == guid else 0
-        nav_fnum_picker = st.selectbox('Select frame', options=ops, index=idx, 
+        nav_fnum_picker = st.selectbox('Select frame', options=guids[nav_guid_picker], index=idx, 
                                        format_func=lambda x: f'{x} {"✅" if get_progress_guid_fnum(nav_guid_picker, x) else "❌"}')
         st.button('Go', help='Go to selected image', on_click=lambda: st.session_state.update({'image_index': revindex_images[(nav_guid_picker, nav_fnum_picker)]}))
     with skip_col:
-        #############################
-        # "Skip" Buttons
-        #############################
-        # On click, cycle to next image, clear annotations, save annotations, rerun OCR and redraw
-        st.button("Next Frame", help="Go to next image", on_click=cycle_images, args=(indexed_images, guid, fnum, 'next'))
-        # Handle duplicate frames. If image is duplicate of last image, save json referencing last image's image id
-        st.button("Duplicate Frame", help="Duplicate frame", on_click=cycle_images, args=(indexed_images, guid, fnum, 'dupe'))
-        # Button for scrolling credits where there are new key-value annotations to add to last image
-        st.button("Continuing Credits", help=f"Add new {KEY}-{VALUE} annotations to last image", on_click=cycle_images, args=(indexed_images, guid, fnum, 'cont'))
-        # Skip frame for which key-value annotations are not applicable
-        st.button("Skip Frame", help="Skip frame", on_click=cycle_images, args=(indexed_images, guid, fnum, 'skip'))
-        # Add skip reason text form
-        skip_reason = st.text_area('Reason for skipping', key='skip_reason')
+        pass
     st.divider()
+    for i in range(len(ocr.results) // 4 + 1):
+        with st.expander(f'boxes row {i}', expanded=True):
+            cols = st.columns(4)
+            for j in range(4):
+                with cols[j]:
+                    r_idx = i * 4 + j
+                    if r_idx >= len(ocr.results):
+                        break
+                    result = ocr.results[r_idx]
+                    if result[2] > 0.8:
+                        color = 'green'
+                    elif result[2] > 0.5:
+                        color = 'orange'
+                    else:
+                        color = 'red'
+                    st.markdown(f'{r_idx}: :{color}[{result[1]}]')
+                    st.button(f'append to `{KEY}`', help='Click to annotate',
+                              on_click=autofill,
+                              args=(result[1], KEY), key=f"key_{result[1]}_{r_idx}")
+                    st.button(f'append to `{VALUE}`', help='Click to annotate', on_click=autofill,
+                              args=(result[1], VALUE), key=f"value_{result[1]}_{r_idx}")
     
-    with st.form("annotation"):
+    ##############################
+    # Add annotation
+    ##############################
+    st.divider()
+    delim_str = 'hit "ENTER" key while in the text field' if DELIM == '\n' else f'type "{DELIM}" in the text field'
+    st.button(f'Add a delimiter to values field (to manually type a delimiter, {delim_str}).', key=f'delim_{i}', on_click=autofill, args=(DELIM, VALUE))
+    with st.container():
         st.write("## Add Annotation")
         col1, col2 = st.columns(2)
         col1.text_input(f'Key', key=KEY, value=st.session_state[KEY] if KEY in st.session_state else '')
         col2.text_area(f'Value', key=VALUE, value=st.session_state[VALUE] if VALUE in st.session_state else '')
-        add_pair_btn = st.form_submit_button("Add a new pair", on_click=add_pair)
-
-    for i in range(len(ocr.results) // 4 + 1):
-        cols = st.columns(4)
-        for j in range(4):
-            with cols[j]:
-                r_idx = i * 4 + j
-                if r_idx >= len(ocr.results):
-                    break
-                result = ocr.results[r_idx]
-                if result[2] > 0.8:
-                    color = 'green'
-                elif result[2] > 0.5:
-                    color = 'orange'
-                else:
-                    color = 'red'
-                st.markdown(f'{r_idx}: :{color}[{result[1]}]')
-                st.button(f'append to `{KEY}`', help='Click to annotate',
-                          on_click=autofill,
-                          args=(result[1], KEY), key=f"key_{result[1]}_{r_idx}")
-                st.button(f'append to `{VALUE}`', help='Click to annotate', on_click=autofill,
-                          args=(result[1], VALUE), key=f"value_{result[1]}_{r_idx}")
-        if DELIM == '\n':
-            delim_str = 'hit "ENTER" key while in the text field'
-        else:
-            delim_str = f'type "{DELIM}" in the text field'
-        st.button(f'Add a delimiter to values field (to manually type a delimiter, {delim_str}).', key=f'delim_{i}', on_click=autofill, args=(DELIM, VALUE), use_container_width=True)
-        b = st.button("extra 'add' button", key=f'add_{i}', on_click=add_pair)
-        st.divider()
-        st.image([sample_img, ocr.annotated_image])
+        add_pair_btn = st.button("Add a new pair", on_click=add_pair)
+    st.divider()
 
     ##############################
     # Annotation Viewer
     ##############################
+    with st.expander('View Images Again', expanded=False):
+        st.image([sample_img, ocr.annotated_image])
 
     st.markdown('## Current Annotations')
     st.write(st.session_state['annotations'])
-
+    st.divider()
+    
     ##############################
     # Annotation Editor 
     ##############################
@@ -312,3 +304,20 @@ if __name__ == '__main__':
         k = st.selectbox(f'Select {KEY} to delete', options=opts, index=0,
                          format_func=lambda x: f'"{x}"' if x else "EMPTY KEY")
         st.button(f"Delete {KEY}-{VALUE} Pair", on_click=delete_pair, args=(k,))
+    st.divider()
+    #############################
+    # "DONE" Buttons
+    #############################
+    cols = st.columns(4)
+    
+    # On click, cycle to next image, clear annotations, save annotations, rerun OCR and redraw
+    cols[0].button("Next Frame", help="Go to next image", on_click=cycle_images, args=(indexed_images, guid, fnum, 'next'))
+    # Handle duplicate frames. If image is duplicate of last image, save json referencing last image's image id
+    cols[1].button("Duplicate Frame", help="Duplicate frame", on_click=cycle_images, args=(indexed_images, guid, fnum, 'dupe'))
+    # Button for scrolling credits where there are new key-value annotations to add to last image
+    cols[2].button("Continuing Credits", help=f"Add new {KEY}-{VALUE} annotations to last image", on_click=cycle_images, args=(indexed_images, guid, fnum, 'cont'))
+    with cols[3]:
+        # Skip frame for which key-value annotations are not applicable
+        st.button("Skip Frame", help="Skip frame", on_click=cycle_images, args=(indexed_images, guid, fnum, 'skip'))
+        # Add skip reason text form
+        skip_reason = st.text_area('Reason for skipping', key='skip_reason')
