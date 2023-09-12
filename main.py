@@ -134,7 +134,8 @@ def cycle_images(images, guid, fnum, action: str):
     if action in ['next', 'cont']:
         add_pair()
     if len(st.session_state['annotations']) == 0 and action == 'next':
-        st.warning('Please annotate image before moving on or classify as duplicate')
+        st.toast('⛔️ Please annotate image before moving on or classify as duplicate')
+        st.error('⛔️ Please annotate image before moving on or classify as duplicate')
         return
     if action == 'next':
         valid = save_pairs(guid, fnum, False)
@@ -207,11 +208,14 @@ if __name__ == '__main__':
             img_idx += 1
         st.session_state['image_index'] = img_idx
     ann_fname = get_annotation_fname(*indexed_images[st.session_state['image_index']])
-    if 'annotations' not in st.session_state:
+    if 'annotations' not in st.session_state or st.session_state['annotations'] is None:
+        st.session_state['annotations'] = {}
         if ann_fname.exists():
-            st.session_state['annotations'] = json.load(open(ann_fname, 'r'))
-        else:
-            st.session_state['annotations'] = {}
+            existing_ann = json.load(open(ann_fname, 'r'))
+            for k, v in existing_ann.items():
+                if k.startswith('_'):
+                    continue
+                st.session_state['annotations'][k] = v
 
     # This is the image that will be annotated
     guid, fnum = indexed_images[st.session_state['image_index']]
@@ -243,7 +247,8 @@ if __name__ == '__main__':
         idx = ops.index(fnum) if nav_guid_picker == guid else 0
         nav_fnum_picker = st.selectbox('Select frame', options=guids[nav_guid_picker], index=idx, 
                                        format_func=lambda x: f'{x} {"✅" if get_progress_guid_fnum(nav_guid_picker, x) else "❌"}')
-        st.button('Go', help='Go to selected image', on_click=lambda: st.session_state.update({'image_index': revindex_images[(nav_guid_picker, nav_fnum_picker)]}))
+        st.button('Go', help='Go to selected image', on_click=lambda: st.session_state.update(
+                      {'image_index': revindex_images[(nav_guid_picker, nav_fnum_picker)], 'annotations': None}))
     with skip_col:
         pass
     st.divider()
