@@ -252,14 +252,18 @@ if __name__ == '__main__':
     with skip_col:
         pass
     st.divider()
-    for i in range(len(ocr.results) // 4 + 1):
+    single_col_ratio = [2, 1, 1]  # text, to_key btn, to_val btn
+    num_cols = 4
+    num_col_cols = len(single_col_ratio)
+    # i = rows, j = cols
+    for i in range(len(ocr.results) // num_cols + 1):
         with st.expander(f'boxes row {i}', expanded=True):
-            cols = st.columns(4)
-            for j in range(4):
-                with cols[j]:
-                    r_idx = i * 4 + j
-                    if r_idx >= len(ocr.results):
-                        break
+            cols = st.columns(single_col_ratio * num_cols)
+            for j in range(num_cols):
+                r_idx = i * num_cols + j
+                if r_idx >= len(ocr.results):
+                    break
+                with cols[j*num_col_cols]:
                     result = ocr.results[r_idx]
                     if result[2] > 0.8:
                         color = 'green'
@@ -268,10 +272,12 @@ if __name__ == '__main__':
                     else:
                         color = 'red'
                     st.markdown(f'{r_idx}: :{color}[{result[1]}]')
-                    st.button(f'append to `{KEY}`', help='Click to annotate',
+                with cols[j*num_col_cols+1]:
+                    st.button(f'{KEY}', help='Click to annotate',
                               on_click=autofill,
                               args=(result[1], KEY), key=f"key_{result[1]}_{r_idx}")
-                    st.button(f'append to `{VALUE}`', help='Click to annotate', on_click=autofill,
+                with cols[j*num_col_cols+2]:
+                    st.button(f'{VALUE}', help='Click to annotate', on_click=autofill,
                               args=(result[1], VALUE), key=f"value_{result[1]}_{r_idx}")
     
     ##############################
