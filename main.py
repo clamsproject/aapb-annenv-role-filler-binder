@@ -230,25 +230,6 @@ if __name__ == '__main__':
     results = load_results(guid, fnum)
     image_name = get_image_id(guid, fnum)
     ocr = OCR(sample_img, results)
-    with st.expander('Data Navigator', expanded=st.session_state['show_navigator']):
-        #############################
-        # Image Navigation
-        #############################
-        sel_video_col, sel_frame_col, go_btn_col = st.columns((2, 2, 1))
-        with sel_video_col:
-            ops = list(guids.keys())
-            idx = ops.index(guid)
-            nav_guid_picker = st.selectbox('Select video', options=ops, index=idx,
-                                           format_func=lambda x: f'{x} ({get_progress_guid(x, string=True)})')
-        with sel_frame_col:
-            ops = guids[nav_guid_picker]
-            idx = ops.index(fnum) if nav_guid_picker == guid else 0
-            nav_fnum_picker = st.selectbox('Select frame', options=guids[nav_guid_picker], index=idx,
-                                           format_func=lambda x: f'{x} {"✅" if get_progress_guid_fnum(nav_guid_picker, x) else "❌"}')
-        with go_btn_col:
-            st.button('Go', help='Go to selected image', on_click=lambda: st.session_state.update(
-                {'image_index': revindex_images[(nav_guid_picker, nav_fnum_picker)], 'annotations': None}))
-
     st.subheader(f'Current image: `{guid}` {fnum}')
     img_col, skip_col = st.columns((7, 1))
     with img_col:
@@ -330,3 +311,24 @@ if __name__ == '__main__':
                 ks = st.multiselect(f'Select {KEY} to delete', options=opts,
                                  format_func=lambda x: f'"{x}"' if x else "EMPTY KEY")
                 st.button(f"Delete {KEY}-{VALUE} Pair", on_click=delete_pairs, args=(ks,))
+    # with st.expander('Data Navigator', expanded=st.session_state['show_navigator']):
+    st.divider()
+    with st.container():
+        #############################
+        # Image Navigation
+        #############################
+        sel_video_col, sel_frame_col, go_btn_col = st.columns((2, 2, 1))
+        with sel_video_col:
+            ops = list(guids.keys())
+            idx = ops.index(guid)
+            nav_guid_picker = st.selectbox('Select video', options=ops, index=idx,
+                                           format_func=lambda x: f'{x} ({get_progress_guid(x, string=True)})')
+        with sel_frame_col:
+            ops = guids[nav_guid_picker]
+            idx = ops.index(fnum) if nav_guid_picker == guid else 0
+            nav_fnum_picker = st.selectbox('Select frame', options=guids[nav_guid_picker], index=idx,
+                                           format_func=lambda x: f'{x} {"✅" if get_progress_guid_fnum(nav_guid_picker, x) else "❌"}')
+        with go_btn_col:
+            st.button('Go', help='Go to selected image', on_click=lambda: st.session_state.update(
+                {'image_index': revindex_images[(nav_guid_picker, nav_fnum_picker)], 'annotations': None}))
+
