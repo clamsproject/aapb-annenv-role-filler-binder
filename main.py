@@ -233,6 +233,11 @@ if __name__ == '__main__':
         st.session_state['show_img_twice'] = False
     if 'show_navigator' not in st.session_state:
         st.session_state['show_navigator'] = False
+    if KEY not in st.session_state:
+        st.session_state[KEY] = ''
+    if VALUE not in st.session_state:
+        st.session_state[VALUE] = ''
+
 
     # This is the image that will be annotated
     guid, fnum = indexed_images[st.session_state['image_index']]
@@ -261,8 +266,11 @@ if __name__ == '__main__':
         if st.session_state['skip_reason'] == skip_reason_otherkey:
             st.session_state['skip_reason'] = st.text_area('Reason for skipping', key='skip_reason_free')
         # Skip frame for which key-value annotations are not applicable
-        st.button("Skip Frame", on_click=cycle_images, args=(indexed_images, guid, fnum, 'skip'))
+        st.button("Skip Frame", on_click=cycle_images, args=(indexed_images, guid, fnum, 'skip'), 
                   disabled='skip_reason' not in st.session_state or st.session_state['skip_reason'] is None or st.session_state['skip_reason'] == '')
+        st.button("Save and proceed to next Frame", use_container_width=True, key='cont_top',
+                  disabled=len(st.session_state[VALUE]) + len(st.session_state['annotations']) == 0,
+                  on_click=cycle_images, args=(indexed_images, guid, fnum, 'next'))
     ##############################
     # Add annotation
     ##############################
@@ -313,7 +321,8 @@ if __name__ == '__main__':
         st.write(st.session_state['annotations'])
     edit_col, next_col = st.columns(2)
     with next_col:
-        st.button("Save and proceed to next Frame", use_container_width=True, disabled=len(st.session_state['annotations']) == 0,
+        st.button("Save and proceed to next Frame", use_container_width=True, key='cont_bottom',
+                  disabled=len(st.session_state[VALUE]) + len(st.session_state['annotations']) == 0,
                   on_click=cycle_images, args=(indexed_images, guid, fnum, 'next'))
     with edit_col:
         ##############################
