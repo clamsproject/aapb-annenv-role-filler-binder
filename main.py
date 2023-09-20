@@ -12,6 +12,14 @@ VALUE = 'value'
 DELIM = '\n'
 delim_str = 'hit "ENTER" key while in the text field' if DELIM == '\n' else f'type "{DELIM}" in the text field'
 REASON_DUPE = 'DUPLICATE'
+skip_reason_otherkey = 'other'
+skip_reason_opts = [
+    None,
+    'no text in image',
+    'not K-V',
+    'commercial',
+    skip_reason_otherkey,
+]
 
 
 def get_image_id(guid, fnum):
@@ -111,10 +119,13 @@ def save_dupe_annotations(guid, fnum):
 
 
 def save_na_annotations(guid, fnum):
-    with st.spinner('Downloading N/A annotations...'):
-        # Download JSON referencing image id of last image
-        with open(get_annotation_fname(guid, fnum), 'w') as f:
-            f.write(json.dumps({'_image_id': get_image_id(guid, fnum), '_skip_reason': skip_reason}, indent=2))
+    reason = st.session_state.get('skip_reason', None)
+    if not (reason is None or reason == ''):
+        with st.spinner('Downloading N/A annotations...'):
+            # Download JSON referencing image id of last image
+            with open(get_annotation_fname(guid, fnum), 'w') as f:
+                f.write(json.dumps({'_image_id': get_image_id(guid, fnum), '_skip_reason': reason}, indent=2))
+        st.session_state.skip_reason_sel = (0, None)
     return True
 
 
@@ -243,9 +254,15 @@ if __name__ == '__main__':
                        args=(indexed_images, guid, fnum, 'dupe'))
         st.divider()
         # Add skip reason text form
-        skip_reason = st.text_area('Reason for skipping', key='skip_reason')
+        st.session_state['skip_reason'] = st.selectbox('Reason for skipping', key='skip_reason_sel',
+                         options=enumerate(skip_reason_opts),
+                         format_func=lambda x: f'0.{x[1]}' if x[1] == skip_reason_otherkey else f'{x[0]}.{x[1]}' if x[1] is not None else "",
+                         )[1]
+        if st.session_state['skip_reason'] == skip_reason_otherkey:
+            st.session_state['skip_reason'] = st.text_area('Reason for skipping', key='skip_reason_free')
         # Skip frame for which key-value annotations are not applicable
         st.button("Skip Frame", on_click=cycle_images, args=(indexed_images, guid, fnum, 'skip'))
+                  disabled='skip_reason' not in st.session_state or st.session_state['skip_reason'] is None or st.session_state['skip_reason'] == '')
     ##############################
     # Add annotation
     ##############################
