@@ -175,6 +175,22 @@ def load_results(guid, fnum):
     return results
 
 
+def copy_prev_annotations(cur_guid):
+    iidx = st.session_state['image_index'] - 1
+    prev_annotations = {}
+    prev_guid, prev_fnum = indexed_images[iidx]
+    while prev_guid == cur_guid:
+        anns = json.load(open(get_annotation_fname(prev_guid, prev_fnum), 'r'))
+        if '_skip_reason' not in anns:
+            prev_annotations = anns
+            break
+        iidx -= 1
+        prev_guid, prev_fnum = indexed_images[iidx]
+    for k, v in prev_annotations.items():
+        if not k.startswith('_'):
+            st.session_state['annotations'][k] = v
+            st.toast(f'"{k}" copied from frame {prev_fnum}')
+
 @st.cache_data
 def load_ocr():
     return OCR(sample_img, results)
@@ -257,6 +273,8 @@ if __name__ == '__main__':
     with skip_col:
         st.button("Duplicate Frame", on_click=cycle_images,
                        args=(indexed_images, guid, fnum, 'dupe'))
+        st.button("Copy prev. annotations", on_click=copy_prev_annotations, args=[guid],
+                  disabled=guids[guid].index(fnum) == 0, use_container_width=True,)
         st.divider()
         # Add skip reason text form
         st.session_state['skip_reason'] = st.selectbox('Reason for skipping', key='skip_reason_sel',
