@@ -10,7 +10,16 @@ import streamlit as st
 KEY = 'key'
 VALUE = 'value'
 DELIM = '\n'
+delim_str = 'hit "ENTER" key while in the text field' if DELIM == '\n' else f'type "{DELIM}" in the text field'
 REASON_DUPE = 'DUPLICATE'
+skip_reason_otherkey = 'other'
+skip_reason_opts = [
+    None,
+    'no text in image',
+    'not K-V',
+    'commercial',
+    skip_reason_otherkey,
+]
 
 
 def get_image_id(guid, fnum):
@@ -59,18 +68,19 @@ def add_pair():
     if vs:
         for v in vs.split(DELIM):
             if v:
-                d[k].append(v)
+                d[k].append(v.strip())
         st.session_state['annotations'] = d
         st.session_state[KEY] = ''
         st.session_state[VALUE] = ''
         st.toast(f'"{v.split(DELIM)}" added to "{k}"')
 
 
-def delete_pair(key):
+def delete_pairs(keys):
     if len(st.session_state['annotations']) == 0:
         st.warning('No annotations to delete')
         return
-    st.session_state['annotations'].pop(key)
+    for key in keys:
+        st.session_state['annotations'].pop(key)
 
 
 def save_pairs(guid, fnum, continuing=True):
@@ -109,10 +119,13 @@ def save_dupe_annotations(guid, fnum):
 
 
 def save_na_annotations(guid, fnum):
-    with st.spinner('Downloading N/A annotations...'):
-        # Download JSON referencing image id of last image
-        with open(get_annotation_fname(guid, fnum), 'w') as f:
-            f.write(json.dumps({'_image_id': get_image_id(guid, fnum), '_skip_reason': skip_reason}, indent=2))
+    reason = st.session_state.get('skip_reason', None)
+    if not (reason is None or reason == ''):
+        with st.spinner('Downloading N/A annotations...'):
+            # Download JSON referencing image id of last image
+            with open(get_annotation_fname(guid, fnum), 'w') as f:
+                f.write(json.dumps({'_image_id': get_image_id(guid, fnum), '_skip_reason': reason}, indent=2))
+        st.session_state.skip_reason_sel = (0, None)
     return True
 
 
@@ -216,6 +229,15 @@ if __name__ == '__main__':
                 if k.startswith('_'):
                     continue
                 st.session_state['annotations'][k] = v
+    if 'show_img_twice' not in st.session_state:
+        st.session_state['show_img_twice'] = False
+    if 'show_navigator' not in st.session_state:
+        st.session_state['show_navigator'] = False
+    if KEY not in st.session_state:
+        st.session_state[KEY] = ''
+    if VALUE not in st.session_state:
+        st.session_state[VALUE] = ''
+
 
     # This is the image that will be annotated
     guid, fnum = indexed_images[st.session_state['image_index']]
@@ -224,34 +246,41 @@ if __name__ == '__main__':
     results = load_results(guid, fnum)
     image_name = get_image_id(guid, fnum)
     ocr = OCR(sample_img, results)
-
-    img_col, nav_col, skip_col = st.columns((7, 2, 1))
+    st.subheader(f'Current image: `{guid}` {fnum} ([AAPB reading room](https://americanarchive.org/catalog/{guid.replace("cpb-aacip-", "cpb-aacip_")}))')
+    img_col, skip_col = st.columns((7, 1))
     with img_col:
         ##############################
         # Drawn Image
         ##############################
-        st.subheader(f'Current image: `{guid}` {fnum}')
-        st.markdown(f'Last "significant" frame: {st.session_state["starting_fnum"] if "starting_fnum" in st.session_state else "None"}')
-        st.caption(f':red[TODO]: explain what "significant" means in the guidelines')
         st.image([sample_img, ocr.annotated_image])
-    with nav_col:
-        #############################
-        # Image Navigation
-        #############################
-        st.subheader('Data Navigator')
-        ops = list(guids.keys())
-        idx = ops.index(guid)
-        nav_guid_picker = st.selectbox('Select video', options=ops, index=idx, 
-                                       format_func=lambda x: f'{x} ({get_progress_guid(x, string=True)})')
-        ops = guids[nav_guid_picker]
-        idx = ops.index(fnum) if nav_guid_picker == guid else 0
-        nav_fnum_picker = st.selectbox('Select frame', options=guids[nav_guid_picker], index=idx, 
-                                       format_func=lambda x: f'{x} {"✅" if get_progress_guid_fnum(nav_guid_picker, x) else "❌"}')
-        st.button('Go', help='Go to selected image', on_click=lambda: st.session_state.update(
-                      {'image_index': revindex_images[(nav_guid_picker, nav_fnum_picker)], 'annotations': None}))
+    # with nav_col:
     with skip_col:
-        pass
-    st.divider()
+        st.button("Duplicate Frame", on_click=cycle_images,
+                       args=(indexed_images, guid, fnum, 'dupe'))
+        st.divider()
+        # Add skip reason text form
+        st.session_state['skip_reason'] = st.selectbox('Reason for skipping', key='skip_reason_sel',
+                         options=enumerate(skip_reason_opts),
+                         format_func=lambda x: f'0.{x[1]}' if x[1] == skip_reason_otherkey else f'{x[0]}.{x[1]}' if x[1] is not None else "",
+                         )[1]
+        if st.session_state['skip_reason'] == skip_reason_otherkey:
+            st.session_state['skip_reason'] = st.text_area('Reason for skipping', key='skip_reason_free')
+        # Skip frame for which key-value annotations are not applicable
+        st.button("Skip Frame", on_click=cycle_images, args=(indexed_images, guid, fnum, 'skip'), 
+                  disabled='skip_reason' not in st.session_state or st.session_state['skip_reason'] is None or st.session_state['skip_reason'] == '')
+        st.button("Save and proceed to next Frame", use_container_width=True, key='cont_top',
+                  disabled=len(st.session_state[VALUE]) + len(st.session_state['annotations']) == 0,
+                  on_click=cycle_images, args=(indexed_images, guid, fnum, 'next'))
+    ##############################
+    # Add annotation
+    ##############################
+    with st.container():
+        st.write("## Add Annotation")
+        col1, col2 = st.columns(2)
+        col1.text_input(f'Key', key=KEY, value=st.session_state[KEY] if KEY in st.session_state else '')
+        col2.text_area(f'Value', key=VALUE, value=st.session_state[VALUE] if VALUE in st.session_state else '')
+        add_pair_btn = st.button("Add a new pair", use_container_width=True, on_click=add_pair)
+        st.button(f'Add a delimiter to values field (to manually type a delimiter, {delim_str}).', use_container_width=True, key=f'delim', on_click=autofill, args=(DELIM, VALUE))
     single_col_ratio = [2, 1, 1]  # text, to_key btn, to_val btn
     num_cols = 4
     num_col_cols = len(single_col_ratio)
@@ -279,56 +308,53 @@ if __name__ == '__main__':
                 with cols[j*num_col_cols+2]:
                     st.button(f'{VALUE}', help='Click to annotate', on_click=autofill,
                               args=(result[1], VALUE), key=f"value_{result[1]}_{r_idx}")
-    
-    ##############################
-    # Add annotation
-    ##############################
-    st.divider()
-    delim_str = 'hit "ENTER" key while in the text field' if DELIM == '\n' else f'type "{DELIM}" in the text field'
-    st.button(f'Add a delimiter to values field (to manually type a delimiter, {delim_str}).', key=f'delim_{i}', on_click=autofill, args=(DELIM, VALUE))
-    with st.container():
-        st.write("## Add Annotation")
-        col1, col2 = st.columns(2)
-        col1.text_input(f'Key', key=KEY, value=st.session_state[KEY] if KEY in st.session_state else '')
-        col2.text_area(f'Value', key=VALUE, value=st.session_state[VALUE] if VALUE in st.session_state else '')
-        add_pair_btn = st.button("Add a new pair", on_click=add_pair)
-    st.divider()
+            st.button(f'Add a delimiter to values field (to manually type a delimiter, {delim_str}).', use_container_width=True, key=f'delim_{i}', on_click=autofill, args=(DELIM, VALUE))
 
     ##############################
     # Annotation Viewer
     ##############################
-    with st.expander('View Images Again', expanded=False):
+    with st.expander('View Images Again', expanded=st.session_state['show_img_twice']):
         st.image([sample_img, ocr.annotated_image])
 
-    st.markdown('## Current Annotations')
-    st.write(st.session_state['annotations'])
+    with st.container():
+        st.markdown('## Current Annotations')
+        st.write(st.session_state['annotations'])
+    edit_col, next_col = st.columns(2)
+    with next_col:
+        st.button("Save and proceed to next Frame", use_container_width=True, key='cont_bottom',
+                  disabled=len(st.session_state[VALUE]) + len(st.session_state['annotations']) == 0,
+                  on_click=cycle_images, args=(indexed_images, guid, fnum, 'next'))
+    with edit_col:
+        ##############################
+        # Annotation Editor 
+        ##############################
+        with st.expander('Edit Annotations', expanded=False):
+            st.write("## Delete Annotation")
+            opts = list(st.session_state['annotations'].keys())
+            if not opts:
+                st.warning('No annotations to delete')
+            else:
+                ks = st.multiselect(f'Select {KEY} to delete', options=opts,
+                                 format_func=lambda x: f'"{x}"' if x else "EMPTY KEY")
+                st.button(f"Delete {KEY}-{VALUE} Pair", on_click=delete_pairs, args=(ks,))
+    # with st.expander('Data Navigator', expanded=st.session_state['show_navigator']):
     st.divider()
-    
-    ##############################
-    # Annotation Editor 
-    ##############################
-    st.write("## Delete Annotation")
-    opts = list(st.session_state['annotations'].keys())
-    if not opts:
-        st.warning('No annotations to delete')
-    else:
-        k = st.selectbox(f'Select {KEY} to delete', options=opts, index=0,
-                         format_func=lambda x: f'"{x}"' if x else "EMPTY KEY")
-        st.button(f"Delete {KEY}-{VALUE} Pair", on_click=delete_pair, args=(k,))
-    st.divider()
-    #############################
-    # "DONE" Buttons
-    #############################
-    cols = st.columns(4)
-    
-    # On click, cycle to next image, clear annotations, save annotations, rerun OCR and redraw
-    cols[0].button("Next Frame", help="Go to next image", on_click=cycle_images, args=(indexed_images, guid, fnum, 'next'))
-    # Handle duplicate frames. If image is duplicate of last image, save json referencing last image's image id
-    cols[1].button("Duplicate Frame", help="Duplicate frame", on_click=cycle_images, args=(indexed_images, guid, fnum, 'dupe'))
-    # Button for scrolling credits where there are new key-value annotations to add to last image
-    cols[2].button("Continuing Credits", help=f"Add new {KEY}-{VALUE} annotations to last image", on_click=cycle_images, args=(indexed_images, guid, fnum, 'cont'))
-    with cols[3]:
-        # Skip frame for which key-value annotations are not applicable
-        st.button("Skip Frame", help="Skip frame", on_click=cycle_images, args=(indexed_images, guid, fnum, 'skip'))
-        # Add skip reason text form
-        skip_reason = st.text_area('Reason for skipping', key='skip_reason')
+    with st.container():
+        #############################
+        # Image Navigation
+        #############################
+        sel_video_col, sel_frame_col, go_btn_col = st.columns((2, 2, 1))
+        with sel_video_col:
+            ops = list(guids.keys())
+            idx = ops.index(guid)
+            nav_guid_picker = st.selectbox('Select video', options=ops, index=idx,
+                                           format_func=lambda x: f'{x} ({get_progress_guid(x, string=True)})')
+        with sel_frame_col:
+            ops = guids[nav_guid_picker]
+            idx = ops.index(fnum) if nav_guid_picker == guid else 0
+            nav_fnum_picker = st.selectbox('Select frame', options=guids[nav_guid_picker], index=idx,
+                                           format_func=lambda x: f'{x} {"✅" if get_progress_guid_fnum(nav_guid_picker, x) else "❌"}')
+        with go_btn_col:
+            st.button('Go', help='Go to selected image', on_click=lambda: st.session_state.update(
+                {'image_index': revindex_images[(nav_guid_picker, nav_fnum_picker)], 'annotations': None}))
+
