@@ -230,7 +230,7 @@ if __name__ == '__main__':
     results = load_results(guid, fnum)
     image_name = get_image_id(guid, fnum)
     ocr = OCR(sample_img, results)
-    st.subheader(f'Current image: `{guid}` {fnum}')
+    st.subheader(f'Current image: `{guid}` {fnum} ([AAPB reading room](https://americanarchive.org/catalog/{guid.replace("cpb-aacip-", "cpb-aacip_")}))')
     img_col, skip_col = st.columns((7, 1))
     with img_col:
         ##############################
