@@ -1,4 +1,5 @@
 import argparse
+import datetime
 import json
 import pickle
 from collections import defaultdict
@@ -14,7 +15,7 @@ delim_str = 'hit "ENTER" key while in the text field' if DELIM == '\n' else f'ty
 REASON_DUPE = 'DUPLICATE'
 skip_reason_otherkey = 'other'
 skip_reason_opts = [
-    None,
+    REASON_DUPE,
     'no text in image',
     'not K-V',
     'commercial',
@@ -110,14 +111,6 @@ def save_pairs(guid, fnum, continuing=True):
         return True
 
 
-def save_dupe_annotations(guid, fnum):
-    with st.spinner('Downloading Duplicate annotations...'):
-        # Download JSON referencing image id of last image
-        with open(get_annotation_fname(guid, fnum), 'w') as f:
-            f.write(json.dumps({'_image_id': get_image_id(guid, fnum), '_skip_reason': REASON_DUPE}, indent=2))
-    return True
-
-
 def save_na_annotations(guid, fnum):
     reason = st.session_state.get('skip_reason', None)
     if not (reason is None or reason == ''):
@@ -125,7 +118,7 @@ def save_na_annotations(guid, fnum):
             # Download JSON referencing image id of last image
             with open(get_annotation_fname(guid, fnum), 'w') as f:
                 f.write(json.dumps({'_image_id': get_image_id(guid, fnum), '_skip_reason': reason}, indent=2))
-        st.session_state.skip_reason_sel = (0, None)
+        st.session_state.skip_reason_sel = (0, REASON_DUPE)
     return True
 
 
@@ -154,8 +147,6 @@ def cycle_images(images, guid, fnum, action: str):
         valid = save_pairs(guid, fnum, False)
     elif action == 'cont':
         valid = save_pairs(guid, fnum)
-    elif action == 'dupe':
-        valid = save_dupe_annotations(guid, fnum)
     elif action == 'skip':
         valid = save_na_annotations(guid, fnum)
     if st.session_state['image_index'] == len(images) - 1:
@@ -174,6 +165,22 @@ def load_results(guid, fnum):
         results = pickle.load(f)
     return results
 
+
+def copy_prev_annotations(cur_guid):
+    iidx = st.session_state['image_index'] - 1
+    prev_annotations = {}
+    prev_guid, prev_fnum = indexed_images[iidx]
+    while prev_guid == cur_guid:
+        anns = json.load(open(get_annotation_fname(prev_guid, prev_fnum), 'r'))
+        if '_skip_reason' not in anns:
+            prev_annotations = anns
+            break
+        iidx -= 1
+        prev_guid, prev_fnum = indexed_images[iidx]
+    for k, v in prev_annotations.items():
+        if not k.startswith('_'):
+            st.session_state['annotations'][k] = v
+            st.toast(f'"{k}" copied from frame {prev_fnum}')
 
 @st.cache_data
 def load_ocr():
@@ -246,7 +253,7 @@ if __name__ == '__main__':
     results = load_results(guid, fnum)
     image_name = get_image_id(guid, fnum)
     ocr = OCR(sample_img, results)
-    st.subheader(f'Current image: `{guid}` {fnum} ([AAPB reading room](https://americanarchive.org/catalog/{guid.replace("cpb-aacip-", "cpb-aacip_")}))')
+    st.subheader(f'Current image: `{guid}` {fnum} ({datetime.timedelta(seconds=fnum // 30)}) [AAPB reading room](https://americanarchive.org/catalog/{guid.replace("cpb-aacip-", "cpb-aacip_")})')
     img_col, skip_col = st.columns((7, 1))
     with img_col:
         ##############################
@@ -255,19 +262,19 @@ if __name__ == '__main__':
         st.image([sample_img, ocr.annotated_image])
     # with nav_col:
     with skip_col:
-        st.button("Duplicate Frame", on_click=cycle_images,
-                       args=(indexed_images, guid, fnum, 'dupe'))
-        st.divider()
         # Add skip reason text form
-        st.session_state['skip_reason'] = st.selectbox('Reason for skipping', key='skip_reason_sel',
-                         options=enumerate(skip_reason_opts),
-                         format_func=lambda x: f'0.{x[1]}' if x[1] == skip_reason_otherkey else f'{x[0]}.{x[1]}' if x[1] is not None else "",
-                         )[1]
+        st.session_state['skip_reason'] = st.selectbox(
+            'Reason for skipping', key='skip_reason_sel',
+            options=enumerate(skip_reason_opts),
+            format_func=lambda x: f'0.{x[1]}' if x[1] == skip_reason_otherkey else f'{x[0]}.{x[1]}' if x[1] != REASON_DUPE else x[1],
+        )[1]
         if st.session_state['skip_reason'] == skip_reason_otherkey:
             st.session_state['skip_reason'] = st.text_area('Reason for skipping', key='skip_reason_free')
         # Skip frame for which key-value annotations are not applicable
-        st.button("Skip Frame", on_click=cycle_images, args=(indexed_images, guid, fnum, 'skip'), 
+        st.button("Skip Frame", on_click=cycle_images, args=(indexed_images, guid, fnum, 'skip'),  use_container_width=True,
                   disabled='skip_reason' not in st.session_state or st.session_state['skip_reason'] is None or st.session_state['skip_reason'] == '')
+        st.button("Copy prev. annotations", on_click=copy_prev_annotations, args=[guid],
+                  disabled=guids[guid].index(fnum) == 0, use_container_width=True,)
         st.button("Save and proceed to next Frame", use_container_width=True, key='cont_top',
                   disabled=len(st.session_state[VALUE]) + len(st.session_state['annotations']) == 0,
                   on_click=cycle_images, args=(indexed_images, guid, fnum, 'next'))
