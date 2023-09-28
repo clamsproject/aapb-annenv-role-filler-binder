@@ -8,10 +8,10 @@ from pathlib import Path
 import cv2 as cv
 import streamlit as st
 
-KEY = 'key'
-VALUE = 'value'
+KEY = 'role'
+VALUE = 'fillers'
 DELIM = '\n'
-delim_str = 'hit "ENTER" key while in the text field' if DELIM == '\n' else f'type "{DELIM}" in the text field'
+delim_str = 'hit "ENTER" while in the text field' if DELIM == '\n' else f'type "{DELIM}" in the text field'
 REASON_DUPE = 'DUPLICATE'
 skip_reason_otherkey = 'other'
 skip_reason_opts = [
@@ -70,10 +70,13 @@ def add_pair():
         for v in vs.split(DELIM):
             if v:
                 d[k].append(v.strip())
-        st.session_state['annotations'] = d
-        st.session_state[KEY] = ''
-        st.session_state[VALUE] = ''
         st.toast(f'"{v.split(DELIM)}" added to "{k}"')
+    else:
+        d[k] = []
+        st.toast(f'empty {VALUE} added to "{k}"')
+    st.session_state['annotations'] = d
+    st.session_state[KEY] = ''
+    st.session_state[VALUE] = ''
 
 
 def delete_pairs(keys):
@@ -224,9 +227,13 @@ if __name__ == '__main__':
     # Load first image
     if 'image_index' not in st.session_state:
         img_idx = 0
-        while get_progress_guid_fnum(*indexed_images[img_idx]):
+        while img_idx < len(indexed_images) and get_progress_guid_fnum(*indexed_images[img_idx]):
             img_idx += 1
-        st.session_state['image_index'] = img_idx
+        if img_idx == len(indexed_images):
+            st.warning('No more images to annotate, showing the last image.')
+            st.session_state['image_index'] = img_idx - 1
+        else:
+            st.session_state['image_index'] = img_idx
     ann_fname = get_annotation_fname(*indexed_images[st.session_state['image_index']])
     if 'annotations' not in st.session_state or st.session_state['annotations'] is None:
         st.session_state['annotations'] = {}
@@ -271,23 +278,23 @@ if __name__ == '__main__':
         if st.session_state['skip_reason'] == skip_reason_otherkey:
             st.session_state['skip_reason'] = st.text_area('Reason for skipping', key='skip_reason_free')
         # Skip frame for which key-value annotations are not applicable
-        st.button("Skip Frame", on_click=cycle_images, args=(indexed_images, guid, fnum, 'skip'),  use_container_width=True,
+        st.button("Skip image", on_click=cycle_images, args=(indexed_images, guid, fnum, 'skip'),  use_container_width=True,
                   disabled='skip_reason' not in st.session_state or st.session_state['skip_reason'] is None or st.session_state['skip_reason'] == '')
         st.button("Copy prev. annotations", on_click=copy_prev_annotations, args=[guid],
                   disabled=guids[guid].index(fnum) == 0, use_container_width=True,)
-        st.button("Save and proceed to next Frame", use_container_width=True, key='cont_top',
-                  disabled=len(st.session_state[VALUE]) + len(st.session_state['annotations']) == 0,
+        st.button("Save and proceed to next image", use_container_width=True, key='cont_top',
+                  disabled=len(st.session_state[KEY]) + len(st.session_state[VALUE]) + len(st.session_state['annotations']) == 0,
                   on_click=cycle_images, args=(indexed_images, guid, fnum, 'next'))
     ##############################
     # Add annotation
     ##############################
     with st.container():
-        st.write("## Add Annotation")
+        st.write(f"## Add {KEY}-{VALUE} Pair")
         col1, col2 = st.columns(2)
-        col1.text_input(f'Key', key=KEY, value=st.session_state[KEY] if KEY in st.session_state else '')
-        col2.text_area(f'Value', key=VALUE, value=st.session_state[VALUE] if VALUE in st.session_state else '')
+        col1.text_input(KEY, key=KEY, value=st.session_state[KEY] if KEY in st.session_state else '')
+        col2.text_area(VALUE, key=VALUE, value=st.session_state[VALUE] if VALUE in st.session_state else '')
         add_pair_btn = st.button("Add a new pair", use_container_width=True, on_click=add_pair)
-        st.button(f'Add a delimiter to values field (to manually type a delimiter, {delim_str}).', use_container_width=True, key=f'delim', on_click=autofill, args=(DELIM, VALUE))
+        st.button(f'Add a delimiter to {VALUE} field (to manually type a delimiter, {delim_str}).', use_container_width=True, key=f'delim', on_click=autofill, args=(DELIM, VALUE))
     single_col_ratio = [2, 1, 1]  # text, to_key btn, to_val btn
     num_cols = 4
     num_col_cols = len(single_col_ratio)
@@ -315,7 +322,7 @@ if __name__ == '__main__':
                 with cols[j*num_col_cols+2]:
                     st.button(f'{VALUE}', help='Click to annotate', on_click=autofill,
                               args=(result[1], VALUE), key=f"value_{result[1]}_{r_idx}")
-            st.button(f'Add a delimiter to values field (to manually type a delimiter, {delim_str}).', use_container_width=True, key=f'delim_{i}', on_click=autofill, args=(DELIM, VALUE))
+            st.button(f'Add a delimiter to {VALUE} field (to manually type a delimiter, {delim_str}).', use_container_width=True, key=f'delim_{i}', on_click=autofill, args=(DELIM, VALUE))
 
     ##############################
     # Annotation Viewer
@@ -328,8 +335,8 @@ if __name__ == '__main__':
         st.write(st.session_state['annotations'])
     edit_col, next_col = st.columns(2)
     with next_col:
-        st.button("Save and proceed to next Frame", use_container_width=True, key='cont_bottom',
-                  disabled=len(st.session_state[VALUE]) + len(st.session_state['annotations']) == 0,
+        st.button("Save and proceed to next image", use_container_width=True, key='cont_bottom',
+                  disabled=len(st.session_state[KEY]) + len(st.session_state[VALUE]) + len(st.session_state['annotations']) == 0,
                   on_click=cycle_images, args=(indexed_images, guid, fnum, 'next'))
     with edit_col:
         ##############################
