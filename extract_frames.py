@@ -13,9 +13,9 @@ if __name__ == '__main__':
 
     mmif = Mmif(open(args.mmif).read())
     vd = mmif.get_documents_by_type(DocumentTypes.VideoDocument)[0]
-    guid = re.search(r'cpb-aacip[-_]\d{3}-[0-9a-z]+', vd.properties.location).group(0)
+    guid = re.search(r'(cpb-aacip[-_][a-z0-9-]+).', vd.properties.location).group(1)
     # video_name = vd.properties.location_path_resolved()
-    view = mmif.get_views_for_document(vd.properties.id)[0]
+    view = mmif.get_views_for_document(vd.id)[0]
     annotations = view.get_annotations(AnnotationTypes.TimeFrame)
 
     image_dir = args.images

@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import json
+import pathlib
 import pickle
 from collections import defaultdict
 from pathlib import Path
@@ -66,10 +67,11 @@ def add_pair():
     d = defaultdict(list, st.session_state['annotations'])
     k = st.session_state[KEY]
     vs = st.session_state[VALUE]
+    if k == '' and len(vs) == 0:
+        return
     if vs:
         for v in vs.split(DELIM):
-            if v:
-                d[k].append(v.strip())
+            d[k].append(v.strip())
         st.toast(f'"{v.split(DELIM)}" added to "{k}"')
     else:
         d[k] = []
@@ -202,8 +204,8 @@ if __name__ == '__main__':
     parser.add_argument('dir', type=str, help='<Image Directory>:<Annotation Directory>', default='images')
     args = parser.parse_args()
     dirs = args.dir.split(':')
-    image_dir = dirs[0]
-    annotation_dir = dirs[1]
+    image_dir = pathlib.Path(dirs[0]).expanduser()
+    annotation_dir = pathlib.Path(dirs[1]).expanduser()
     Path(annotation_dir).mkdir(parents=True, exist_ok=True)
     guids = defaultdict(list)
     for img_f in Path(image_dir).glob('*.png'):
@@ -293,7 +295,7 @@ if __name__ == '__main__':
         col1, col2 = st.columns(2)
         col1.text_input(KEY, key=KEY, value=st.session_state[KEY] if KEY in st.session_state else '')
         col2.text_area(VALUE, key=VALUE, value=st.session_state[VALUE] if VALUE in st.session_state else '')
-        add_pair_btn = st.button("Add a new pair", use_container_width=True, on_click=add_pair)
+        add_pair_btn = st.button("Add a new pair", use_container_width=True, on_click=add_pair, disabled=st.session_state[KEY] == '' and st.session_state[VALUE] == '')
         st.button(f'Add a delimiter to {VALUE} field (to manually type a delimiter, {delim_str}).', use_container_width=True, key=f'delim', on_click=autofill, args=(DELIM, VALUE))
     single_col_ratio = [2, 1, 1]  # text, to_key btn, to_val btn
     num_cols = 4
