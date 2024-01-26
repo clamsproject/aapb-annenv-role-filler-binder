@@ -18,8 +18,9 @@ skip_reason_otherkey = 'other'
 skip_reason_opts = [
     REASON_DUPE,
     'no text in image',
-    'not K-V',
-    'commercial',
+    'not role/filler',
+    '(DONT-USE) commercial',
+    'undecidable',
     skip_reason_otherkey,
 ]
 
