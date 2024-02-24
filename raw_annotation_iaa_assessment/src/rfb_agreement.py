@@ -21,7 +21,7 @@ from os import PathLike
 # ====================================|
 def load_data(annotator_a_dir: Union[str, PathLike],
               annotator_b_dir: Union[str, PathLike],
-              include_skips  : bool = False) -> Dict(str, Dict(str, Dict)):
+              include_skips  : bool = False) -> Dict[str, Dict[str, Dict]]:
     """Load in data from two annotators
     
     Collates both sets of annotations into a single data structure, 
@@ -68,8 +68,8 @@ def load_data(annotator_a_dir: Union[str, PathLike],
     return frames_dict
     
 
-def assoc_pairs(anno_one: Dict(str, List(str)), 
-                anno_two: Dict(str, List(str))):
+def assoc_pairs(anno_one: Dict[str, List[str]],
+                anno_two: Dict[str, List[str]]):
     """Associate Pairs 
     
     Generates a set of tuples for each annotation in
@@ -153,8 +153,8 @@ def get_iou(seq_one: List[str],
     return intersection / union
 
 
-def get_max_similarity(gold: Tuple(str, str),
-                       test_seq: List(Tuple(str, str))) -> float:
+def get_max_similarity(gold: Tuple[str, str],
+                       test_seq: List[Tuple[str, str]]) -> float:
     """Fuzzy-Match similarity calculation
 
     Given a gold document and a sequence of test docs, 
@@ -174,7 +174,7 @@ def get_max_similarity(gold: Tuple(str, str),
     return match[0]
 
 
-def get_agreement(annotations, skips=False) -> defaultdict(Dict(str,float)):
+def get_agreement(annotations, skips=False) -> defaultdict[Dict[str, float]]:
     """Calculate IOU agreement over KV pairs
     
     ## Args
@@ -246,8 +246,8 @@ def main(args):
     in_dir   = args.in_dir
     out_file = args.out_file
     skip     = args.skip
-    ANNOTATOR_A = 20007
-    ANNOTATOR_B = 20008
+    ANNOTATOR_A = 20019 # 20007
+    ANNOTATOR_B = 20017 # 20008
     a_dir = f"{in_dir}/{ANNOTATOR_A}"
     b_dir = f"{in_dir}/{ANNOTATOR_B}"
 
@@ -260,7 +260,8 @@ def main(args):
     results = get_agreement(frames, skips = skip)
     
     # write to file
-    with open(f"results/skips/{out_file}", 'w', encoding='utf8') as f:
+    # with open(f"results/skips/{out_file}", 'w', encoding='utf8') as f:
+    with open(f"./{out_file}", 'w', encoding='utf8') as f:
         writer = csv.writer(f)
         writer.writerow(["guid", "keys","vals","pairs","total"])
         for guid, agreement in results.items():
@@ -271,12 +272,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--in_dir",
                         help="Directory where annotation json files are stored",
-                        default="./data/rfb-r2-annotations.231117")
+                        default="./adjud-r3_eval")
     parser.add_argument("-s", "--skip",
                         action="store_true",
                         help="whether or not to include skipped files in the agreement calculation")
     parser.add_argument('-o', "--out_file",
                         help="location of the results output file",
-                        default="product-complexfuzzy-results.csv")
+                        default="r3-results.csv")
     runtime_args = parser.parse_args() 
     main(args=runtime_args)
