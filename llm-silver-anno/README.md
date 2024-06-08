@@ -29,7 +29,7 @@ Both `llm_adjudicator.py` and `review_ocr.py` expect input data in CSV format. E
 | textdocument | The OCR content |
 | path | Path to the source video |
 
-#### LLM Adjudicator
+### LLM Adjudicator
 The adjudication environment takes the output of the OCR reviewer annotations, plus:
 
 - silver_standard_annotation
@@ -65,3 +65,19 @@ The adjudicator produces a CSV with all input values, and stores the output in t
 |-------|-------------|
 | adjudicated | Whether the row has been processed |
 | accepted | Whether the annotation was accepted. If false, it should be discarded from the data batch. (Note, this will also be set to true if the user manually corrected the LLM annotation) |
+
+
+## Guidelines
+
+### OCR Reviewer:
+
+The OCR Reviewer allows for a few annotation options for each image:
+
+- **Swap scene type** between credit and chyron if the scene has been misclassified by SWT.
+- **Reject OCR** if the OCR results are so poor in quality that they would be useless as input to an RFB model. This is equivalent to sequence-tagging the text as a series of "O"s, i.e. no viable RFB results found.
+- **Delete** if the true scene type is not credit or chyron, or if the OCR results are an edge case that necessitate throwing them out from the batch entirely (this should not happen very often).
+- **Submit** if all needed changes have been made, or if the results were correct initially.
+
+### LLM Adjudicator:
+
+The LLM adjudicator is comparitively more simple, with options to accept or reject the LLM's annotations. The user can also edit the BIO-formatted annotations directly -- after editing, select accept ("👍") to submit the changes. The tags will be automatically parsed to JSON format for real-time preview.
