@@ -13,7 +13,7 @@ This directory contains the tools for LLM-based RFB annotation. The workflow is 
 
 Both annotation environments can be run using `streamlit run <filename>`. Since the apps gather frames from AAPB GUIDs and timepoints, **they must be run from a lab server if you do not have the videos saved locally!** Running them from your local device will cause an error.
 
-You can upload an annotation file from your local device to the streamlit uploader. Once you start annotating, a copy with all annotated changes will be stored in the llm-silver-anno directory on the server. If you need to come back and make later changes, you can use the same local file -- even if the local file is unannotated, it will reference the server copy and pick up from where you left off.
+You can upload an annotation file from your local device to the streamlit uploader. Once you start annotating, a copy with all annotated changes will be stored in the llm-silver-anno directory on the server. If you need to come back and make later changes, you can use the same local file -- even if the local file is unannotated, it will reference the server copy and pick up from where you left off. If running locally, it will save and access the file stored in the local `llm-silver-anno` directory.
 
 ## Data format
 
