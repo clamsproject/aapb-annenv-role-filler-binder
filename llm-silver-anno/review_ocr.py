@@ -26,6 +26,12 @@ if "df" not in st.session_state:
         st.session_state["csv_file"] = st.session_state["csv_file"].name
 df = st.session_state["df"]
 
+# Add output fields if not already present
+output_fields = ["ocr_accepted", "deleted", "label_adjusted", "annotated"]
+for field in output_fields:
+    if field not in df.columns:
+        df[field] = False
+
 try:
     if st.session_state.get("jump") and int(st.session_state.get("jump")) < len(df) and int(st.session_state.get("jump")) >= 0:
         index = int(st.session_state.get("jump"))

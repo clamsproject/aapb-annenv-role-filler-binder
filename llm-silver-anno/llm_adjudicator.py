@@ -3,6 +3,7 @@ import pandas as pd
 import cv2
 import os
 from collections import defaultdict
+from utils.clean_ocr import clean_ocr
 
 st.set_page_config(page_title="LLM Adjudicator", layout="wide")
 
@@ -24,6 +25,14 @@ if "df" not in st.session_state:
     if not isinstance(st.session_state["csv_file"], str):
         st.session_state["csv_file"] = st.session_state["csv_file"].name
 df = st.session_state["df"]
+
+if "cleaned_text" not in df.columns:
+    df["cleaned_text"] = df["textdocument"].map(clean_ocr)
+
+output_fields = ["adjudicated", "accepted"]
+for field in output_fields:
+    if field not in df.columns:
+        df[field] = False
 
 try:
     if st.session_state.get("jump") and int(st.session_state.get("jump")) < len(df) and int(st.session_state.get("jump")) >= 0:
