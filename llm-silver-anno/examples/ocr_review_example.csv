@@ -1,0 +1,6 @@
+guid,timePoint,scene_label,confidence,textdocument,path,ocr_accepted,deleted,annotated,label_adjusted
+cpb-aacip-526-dj58c9s78v,1463463,chyron,0.8403619925181071,"--Arnold WA Chandler WISCONSIN DEPARTMENT OF PUBLIC INSTRUCTION",/mnt/llc/llc_data/clams/wgbh/Peabody/cpb-aacip-526-dj58c9s78v.mp4,True,False,True,False
+cpb-aacip-507-ms3jw87c9c,2683684,chyron,0.6603665401538213,"Voice of Interpreter 3141 5 Rong Yonglin Chairman, Tsinghua Tongfang 161 199 a ar",/mnt/llc/llc_data/clams/wgbh/NewsHour/cpb-aacip-507-ms3jw87c9c.mp4,True,False,True,False
+cpb-aacip-259-m32n9b08,214214,chyron,0.6484182476997375,"CELL - SUPPORTING M3N JERSEY 0009 EMPLOYEES ISOMILLION DOLL ANNUAL PAYROLL (245ML a - . ALC CAMPBELL WILLIS GNV PAUL a ENCINEARS",/mnt/llc/llc_data/clams/wgbh/sonyids_newjerseynetwork_20180423192048/cpb-aacip-259-m32n9b08.h264.mp4,True,False,True,False
+cpb-aacip-235-5370swqf,383383,chyron,0.8797776103019714,"Margaret Lanier - Alaska Native Health Board",/mnt/llc/llc_data/clams/wgbh/wrvr/Videos_for_slate_training/cpb-aacip-235-5370swqf.h264.mp4,True,False,True,False
+cpb-aacip-507-tq5r786f7w,743744,chyron,0.5543296604106823,"Sen. Patrick Leahy (D) Vermont",/mnt/llc/llc_data/clams/wgbh/NewsHour/cpb-aacip-507-tq5r786f7w.mp4,False,False,True,False

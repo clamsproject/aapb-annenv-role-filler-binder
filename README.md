@@ -1,5 +1,10 @@
 # Annotation Environment for Credits and Slates parsing
 
+## Overview
+This directory contains the gold-standard annotation environment for "role-filler binding" (RFB) data. The most recent iteration of the RFB model uses a different "BIO" annotation structure based in NER, and uses training data generated from "silver standard" LLM outputs. 
+- To use/view that environment, see the `llm-silver-anno` directory. 
+- To use/view the original gold-standard annotation environment, see this (top-level) directory
+
 ## Installation
 * Create a virtual environment `conda create -n annotate python=3.8`
 * Activate the virtual environment `conda activate annotate`
