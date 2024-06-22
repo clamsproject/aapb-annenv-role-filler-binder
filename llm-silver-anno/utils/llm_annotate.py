@@ -20,7 +20,7 @@ def annotate_chyron(cleaned_ocr):
 
     Please use the following format based in BIO format with indices:
 
-    Format: Tag the end of each word with _(BIO rfb tag), where BIO rfb tag is one of the following:
+    Format: Tag the end of each word with @(BIO rfb tag), where BIO rfb tag is one of the following:
 
     BR:i - meaning "begin role i" where i is an index
     IR:i - meaning "in role i"
@@ -69,7 +69,7 @@ def annotate_credit(cleaned_ocr):
 
     Please use the following format based in BIO format with indices:
 
-    Format: Tag the end of each word with _(BIO rfb tag), where BIO rfb tag is one of the following:
+    Format: Tag the end of each word with @(BIO rfb tag), where BIO rfb tag is one of the following:
 
     BR:i - meaning "begin role i" where i is an index
     IR:i - meaning "in role i"
