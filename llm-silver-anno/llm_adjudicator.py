@@ -10,12 +10,9 @@ st.set_page_config(page_title="LLM Adjudicator", layout="wide")
 # -- SESSION STATE --
 
 if "csv_file" not in st.session_state:
-    uploaded_file = st.file_uploader("Upload CSV file", type=["csv"], key="filepath")
-    if uploaded_file is not None:
-        if os.path.exists(uploaded_file.name):
-            st.session_state["csv_file"] = uploaded_file.name
-        else:
-            st.session_state["csv_file"] = uploaded_file
+    uploaded_filename = st.text_input("Enter name of annotation file", placeholder="filename.csv", key="csv_filename")
+    if uploaded_filename:
+        st.session_state["csv_file"] = os.path.join("annotations/3-llm-in-progress", uploaded_filename)
         st.rerun()
     st.stop()
 
@@ -34,15 +31,29 @@ for field in output_fields:
     if field not in df.columns:
         df[field] = False
 
+def submit_final_annotations():
+    df = st.session_state["df"]
+    df = df[df["accepted"] == True]
+    df.dropna(inplace=True)
+    df = df[["guid", "scene_label", "cleaned_text", "silver_standard_annotation"]]
+    df = df.rename(columns = {"silver_standard_annotation": "labels"})
+    next_step_path = os.path.join("annotations/4-llm-complete", os.path.basename(st.session_state["csv_file"]))
+    df.to_csv(next_step_path, index=False)
+    os.remove(st.session_state["csv_file"])
+    st.write("Annotations completed and submitted!")
+    st.balloons()
+    st.stop()
+
 try:
     if st.session_state.get("jump") and int(st.session_state.get("jump")) < len(df) and int(st.session_state.get("jump")) >= 0:
         index = int(st.session_state.get("jump"))
     else:
-        index = st.session_state.get("index", df.loc[df['adjudicated'] == False].index[0])
+        index = st.session_state.get("index", df.loc[df['annotated'] == False].index[0])
     st.session_state["index"] = index
 except IndexError:
-    st.header("All images adjudicated!")
-    st.balloons()
+    st.header("All images adjudicated.")
+    st.warning("Warning: submitted annotation files cannot be re-annotated. If you need to make changes before submitting, use 'Jump to Row' button below.")
+    st.button("Submit Annotations", on_click=submit_final_annotations)
     st.text_input("Jump to row", key="jump", placeholder="Enter row index")
     st.write(df)
     st.stop()

@@ -22,7 +22,7 @@ def clean_ocr(text_document: str) -> list[str]:
         else:
             line = [s for s in line.split() if (len(s) > 1 and has_alpha(s)) or s in allowable_chars]
         cleaned.extend(line)
-    return cleaned
+    return " ".join(cleaned)
 
 
 def main(input_file, output_file):
