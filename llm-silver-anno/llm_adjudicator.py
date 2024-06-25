@@ -21,7 +21,7 @@ if "df" not in st.session_state:
     # Save the name as a string for server saving
     if not isinstance(st.session_state["csv_file"], str):
         st.session_state["csv_file"] = st.session_state["csv_file"].name
-df = st.session_state["df"]
+df = st.session_state["df"].dropna()
 
 if "cleaned_text" not in df.columns:
     df["cleaned_text"] = df["textdocument"].map(clean_ocr)
@@ -48,8 +48,9 @@ try:
     if st.session_state.get("jump") and int(st.session_state.get("jump")) < len(df) and int(st.session_state.get("jump")) >= 0:
         index = int(st.session_state.get("jump"))
     else:
-        index = st.session_state.get("index", df.loc[df['annotated'] == False].index[0])
+        index = st.session_state.get("index", df.loc[df['adjudicated'] == False].index[0])
     st.session_state["index"] = index
+    row = df.iloc[index]
 except IndexError:
     st.header("All images adjudicated.")
     st.warning("Warning: submitted annotation files cannot be re-annotated. If you need to make changes before submitting, use 'Jump to Row' button below.")
@@ -73,7 +74,11 @@ st.header(f"Claude Adjudicator ({index}/{len(df)})", divider='gray')
 
 sidebar = st.sidebar
 
-row = df.iloc[index]
+# Skip instances where OCR was rejected (label already assigned)
+if row.get("ocr_accepted", True) == False:
+    st.session_state["index"] += 1
+    st.rerun()
+
 fpath = row["path"]
 timepoint = row["timePoint"]
 formatted_text = row["cleaned_text"]

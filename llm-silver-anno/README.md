@@ -74,7 +74,7 @@ This will use the Claude API to add "silver standard" LLM annotations to the fil
 "Adjudicate" the LLM annotations by accepting, rejecting, or correcting. Start up the server by running:
 
 ```
-python llm_adjudicator.py
+streamlit run llm_adjudicator.py
 ```
 
 Begin annotating your file by entering the filename in the text box (`anno.csv`). See *Guidelines* for more information. When you are finished annotating, hit "Submit Annotations." This will perform cleanup on the file and move it to the `4-llm-complete` subdirectory.
