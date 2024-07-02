@@ -113,7 +113,7 @@ def annotate_row(row):
         try:
             if row["scene_label"] == "chyron":
                 return annotate_chyron(row["cleaned_text"])
-            elif row["scene_label"] == "credit":
+            elif row["scene_label"] == "credits":
                 return annotate_credit(row["cleaned_text"])
         except Exception as e:
             print(e)

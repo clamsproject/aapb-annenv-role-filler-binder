@@ -138,16 +138,20 @@ def parse_silver_standard(anno):
 def reject_callback():
     global df
     df.loc[index, "accepted"] = False
+    st.session_state["df"] = df
     next_example()
 
 def accept_callback():
     global df
     df.loc[index, "accepted"] = True
+    st.session_state["df"] = df
     next_example()
 
 def edit_callback():
     global df
     df.loc[index, "silver_standard_annotation"] = st.session_state["silver_standard"]
+    st.session_state["df"] = df
+    refresh_all()
 
 
 silver_standard = row["silver_standard_annotation"]

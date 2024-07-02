@@ -43,8 +43,8 @@ if "cleaned_text" not in df.columns:
 def submit_final_annotations():
     df = st.session_state["df"]
     df = df[df["deleted"] == False]
-    df.drop(columns=["annotated", "label_adjusted", "deleted", "confidence"], inplace=True)
-    df.dropna(inplace=True)
+    df = df.drop(columns=["annotated", "label_adjusted", "deleted", "confidence"], inplace=False)
+    df = df.dropna(inplace=False)
     next_step_path = os.path.join("annotations/2-ocr-complete", os.path.basename(st.session_state["csv_file"]))
     df.to_csv(next_step_path, index=False)
     os.remove(st.session_state["csv_file"])
