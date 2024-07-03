@@ -4,6 +4,7 @@ import cv2
 import os
 from collections import defaultdict
 from utils.clean_ocr import clean_ocr
+import re
 
 st.set_page_config(page_title="LLM Adjudicator", layout="wide")
 
@@ -35,7 +36,7 @@ def submit_final_annotations():
     df = st.session_state["df"]
     df = df[df["accepted"] == True]
     df.dropna(inplace=True)
-    df = df[["guid", "scene_label", "cleaned_text", "silver_standard_annotation"]]
+    df = df[["guid", "timePoint", "scene_label", "cleaned_text", "silver_standard_annotation"]]
     df = df.rename(columns = {"silver_standard_annotation": "labels"})
     next_step_path = os.path.join("annotations/4-llm-complete", os.path.basename(st.session_state["csv_file"]))
     df.to_csv(next_step_path, index=False)
@@ -133,7 +134,7 @@ def parse_silver_standard(anno):
 
         return rfb_dict
     except Exception as e:
-        return {"error": "Unparsable string. Please reject."}
+        return {"error": "Unparsable string."}
 
 def reject_callback():
     global df
@@ -155,6 +156,8 @@ def edit_callback():
 
 
 silver_standard = row["silver_standard_annotation"]
+silver_standard_tokenized = re.sub("@.*? |@.*$", " ", silver_standard).split()
+formatted_text_tokenized = formatted_text.split()
 
 if success:
     col1, col2 = st.columns(2)
@@ -162,7 +165,10 @@ if success:
         # Image panel
         st.image(image, channels="BGR")
         with col1.container(border=True):
-            st.write(f"#### {formatted_text}")
+            if silver_standard_tokenized != formatted_text_tokenized:
+                st.write(f"#### :red[{formatted_text}]")
+            else:
+                st.write(f"#### {formatted_text}")
     with col2:
         with col2.container(border=True):
             jsonified = parse_silver_standard(silver_standard)
