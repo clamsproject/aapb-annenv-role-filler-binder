@@ -4,18 +4,16 @@ import cv2
 import os
 from collections import defaultdict
 from utils.clean_ocr import clean_ocr
+import re
 
 st.set_page_config(page_title="LLM Adjudicator", layout="wide")
 
 # -- SESSION STATE --
 
 if "csv_file" not in st.session_state:
-    uploaded_file = st.file_uploader("Upload CSV file", type=["csv"], key="filepath")
-    if uploaded_file is not None:
-        if os.path.exists(uploaded_file.name):
-            st.session_state["csv_file"] = uploaded_file.name
-        else:
-            st.session_state["csv_file"] = uploaded_file
+    uploaded_filename = st.text_input("Enter name of annotation file", placeholder="filename.csv", key="csv_filename")
+    if uploaded_filename:
+        st.session_state["csv_file"] = os.path.join("annotations/3-llm-in-progress", uploaded_filename)
         st.rerun()
     st.stop()
 
@@ -24,7 +22,7 @@ if "df" not in st.session_state:
     # Save the name as a string for server saving
     if not isinstance(st.session_state["csv_file"], str):
         st.session_state["csv_file"] = st.session_state["csv_file"].name
-df = st.session_state["df"]
+df = st.session_state["df"].dropna()
 
 if "cleaned_text" not in df.columns:
     df["cleaned_text"] = df["textdocument"].map(clean_ocr)
@@ -34,15 +32,30 @@ for field in output_fields:
     if field not in df.columns:
         df[field] = False
 
+def submit_final_annotations():
+    df = st.session_state["df"]
+    df = df[df["accepted"] == True]
+    df.dropna(inplace=True)
+    df = df[["guid", "timePoint", "scene_label", "cleaned_text", "silver_standard_annotation"]]
+    df = df.rename(columns = {"silver_standard_annotation": "labels"})
+    next_step_path = os.path.join("annotations/4-llm-complete", os.path.basename(st.session_state["csv_file"]))
+    df.to_csv(next_step_path, index=False)
+    os.remove(st.session_state["csv_file"])
+    st.write("Annotations completed and submitted!")
+    st.balloons()
+    st.stop()
+
 try:
     if st.session_state.get("jump") and int(st.session_state.get("jump")) < len(df) and int(st.session_state.get("jump")) >= 0:
         index = int(st.session_state.get("jump"))
     else:
         index = st.session_state.get("index", df.loc[df['adjudicated'] == False].index[0])
     st.session_state["index"] = index
+    row = df.iloc[index]
 except IndexError:
-    st.header("All images adjudicated!")
-    st.balloons()
+    st.header("All images adjudicated.")
+    st.warning("Warning: submitted annotation files cannot be re-annotated. If you need to make changes before submitting, use 'Jump to Row' button below.")
+    st.button("Submit Annotations", on_click=submit_final_annotations)
     st.text_input("Jump to row", key="jump", placeholder="Enter row index")
     st.write(df)
     st.stop()
@@ -62,7 +75,11 @@ st.header(f"Claude Adjudicator ({index}/{len(df)})", divider='gray')
 
 sidebar = st.sidebar
 
-row = df.iloc[index]
+# Skip instances where OCR was rejected (label already assigned)
+if row.get("ocr_accepted", True) == False:
+    st.session_state["index"] += 1
+    st.rerun()
+
 fpath = row["path"]
 timepoint = row["timePoint"]
 formatted_text = row["cleaned_text"]
@@ -117,24 +134,30 @@ def parse_silver_standard(anno):
 
         return rfb_dict
     except Exception as e:
-        return {"error": "Unparsable string. Please reject."}
+        return {"error": "Unparsable string."}
 
 def reject_callback():
     global df
     df.loc[index, "accepted"] = False
+    st.session_state["df"] = df
     next_example()
 
 def accept_callback():
     global df
     df.loc[index, "accepted"] = True
+    st.session_state["df"] = df
     next_example()
 
 def edit_callback():
     global df
     df.loc[index, "silver_standard_annotation"] = st.session_state["silver_standard"]
+    st.session_state["df"] = df
+    refresh_all()
 
 
 silver_standard = row["silver_standard_annotation"]
+silver_standard_tokenized = re.sub("@.*? |@.*$", " ", silver_standard).split()
+formatted_text_tokenized = formatted_text.split()
 
 if success:
     col1, col2 = st.columns(2)
@@ -142,7 +165,10 @@ if success:
         # Image panel
         st.image(image, channels="BGR")
         with col1.container(border=True):
-            st.write(f"#### {formatted_text}")
+            if silver_standard_tokenized != formatted_text_tokenized:
+                st.write(f"#### :red[{formatted_text}]")
+            else:
+                st.write(f"#### {formatted_text}")
     with col2:
         with col2.container(border=True):
             jsonified = parse_silver_standard(silver_standard)

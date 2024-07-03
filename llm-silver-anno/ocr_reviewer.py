@@ -4,6 +4,7 @@ import cv2
 from streamlit_extras.tags import tagger_component
 from streamlit_shortcuts import add_keyboard_shortcuts
 import os
+from utils.clean_ocr import clean_ocr
 
 st.set_page_config(page_title="SWT OCR Annotator", layout="wide")
 
@@ -11,9 +12,13 @@ st.set_page_config(page_title="SWT OCR Annotator", layout="wide")
 
 if "csv_file" not in st.session_state:
     uploaded_file = st.file_uploader("Upload CSV file", type=["csv"], key="filepath")
-    if uploaded_file is not None:
-        if os.path.exists(uploaded_file.name):
-            st.session_state["csv_file"] = uploaded_file.name
+    uploaded_filename = st.text_input("Or, enter name of already uploaded annotation file", placeholder="filename.csv", key="csv_filename")
+    if uploaded_filename:
+        st.session_state["csv_file"] = os.path.join("annotations/1-ocr-in-progress", uploaded_filename)
+        st.rerun()
+    elif uploaded_file is not None:
+        if os.path.exists(os.path.join("annotations/1-ocr-in-progress", uploaded_file.name)):
+            st.session_state["csv_file"] = os.path.join("annotations/1-ocr-in-progress", uploaded_file.name)
         else:
             st.session_state["csv_file"] = uploaded_file
         st.rerun()
@@ -23,14 +28,29 @@ if "df" not in st.session_state:
     st.session_state["df"] = pd.read_csv(st.session_state["csv_file"])
     # Save the name as a string for server saving
     if not isinstance(st.session_state["csv_file"], str):
-        st.session_state["csv_file"] = st.session_state["csv_file"].name
+        st.session_state["csv_file"] = os.path.join("annotations/1-ocr-in-progress", st.session_state["csv_file"].name)
+
 df = st.session_state["df"]
 
-# Add output fields if not already present
-output_fields = ["ocr_accepted", "deleted", "label_adjusted", "annotated"]
-for field in output_fields:
+# Add annotation fields if not already present
+annotation_fields = ["ocr_accepted", "deleted", "label_adjusted", "annotated"]
+for field in annotation_fields:
     if field not in df.columns:
         df[field] = False
+if "cleaned_text" not in df.columns:
+    df["cleaned_text"] = df["textdocument"].apply(clean_ocr)
+
+def submit_final_annotations():
+    df = st.session_state["df"]
+    df = df[df["deleted"] == False]
+    df = df.drop(columns=["annotated", "label_adjusted", "deleted", "confidence"], inplace=False)
+    df = df.dropna(inplace=False)
+    next_step_path = os.path.join("annotations/2-ocr-complete", os.path.basename(st.session_state["csv_file"]))
+    df.to_csv(next_step_path, index=False)
+    os.remove(st.session_state["csv_file"])
+    st.write("Annnotations completed and submitted!")
+    st.balloons()
+    st.stop()
 
 try:
     if st.session_state.get("jump") and int(st.session_state.get("jump")) < len(df) and int(st.session_state.get("jump")) >= 0:
@@ -39,8 +59,9 @@ try:
         index = st.session_state.get("index", df.loc[df['annotated'] == False].index[0])
     st.session_state["index"] = index
 except IndexError:
-    st.header("All images annotated!")
-    st.balloons()
+    st.header("All images annotated.")
+    st.warning("Warning: submitted annotation files cannot be re-annotated. If you need to make changes before submitting, use 'Jump to Row' button below.")
+    st.button("Submit Annotations", on_click=submit_final_annotations)
     st.text_input("Jump to row", key="jump", placeholder="Enter row index")
     st.write(df)
     st.stop()
@@ -60,7 +81,7 @@ st.header(f"SWT OCR Annotator ({index}/{len(df)})", divider='gray')
 
 sidebar = st.sidebar
 with sidebar:
-    submit_key = st.text_input("Submit Key", key="submit", value="Enter")
+    submit_key = st.text_input("Submit Key", key="submit", value="y")
     reject_key = st.text_input("Reject Key", key="reject", value="x")
     swap_key = st.text_input("Swap Key", key="swap", value="s")
     delete_key = st.text_input("Delete Key", key="delete", value="Ctrl+Shift+X")
@@ -85,7 +106,7 @@ row = df.iloc[index]
 fpath = row["path"]
 timepoint = row["timePoint"]
 scene_label = row["scene_label"]
-formatted_text = row["textdocument"].replace("\n", "<br>")
+formatted_text = row["cleaned_text"].replace("\n", "<br>")
 
 # Get frame image from video
 frame = cv2.VideoCapture(fpath)
