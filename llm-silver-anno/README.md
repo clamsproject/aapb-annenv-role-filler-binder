@@ -69,6 +69,9 @@ python utils/llm_annotate.py --input_file annotations/2-ocr-complete/anno.csv
 
 This will use the Claude API to add "silver standard" LLM annotations to the file. The file will then be moved to `3-llm-in-progress` to indicate it is ready for adjudication.
 
+> [!NOTE]
+> If you want to run the Claude annotator on all files in the 2-ocr-complete directory, replace the --input_file flag with --all or -a.
+
 ### 4. Perform LLM adjudication
 
 "Adjudicate" the LLM annotations by accepting, rejecting, or correcting. Start up the server by running:

@@ -128,12 +128,24 @@ def annotate_df(df):
  
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process data")
-    parser.add_argument("--input_file", required=True, help="Input CSV file path")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--input_file", help="Input CSV file path", default=None)
+    group.add_argument("-a", "--all", action="store_true", help="Process all files in the 2-ocr-complete directory")
     args = parser.parse_args()
 
     output_dir = os.path.join(BASE_DIR, "annotations/3-llm-in-progress")
-    output_file = os.path.join(output_dir, os.path.basename(args.input_file))
 
-    annotated_df = annotate_df(pd.read_csv(args.input_file))
-    annotated_df.to_csv(output_file, index=False)
-    os.remove(args.input_file)
+    if args.input_file is not None:
+        output_file = os.path.join(output_dir, os.path.basename(args.input_file))
+        annotated_df = annotate_df(pd.read_csv(args.input_file))
+        annotated_df.to_csv(output_file, index=False)
+        os.remove(args.input_file)
+
+    else:
+        for file in os.listdir(os.path.join(BASE_DIR, "annotations/2-ocr-complete")):
+            if not file.endswith(".csv"):
+                continue
+            full_path = os.path.join(BASE_DIR, "annotations/2-ocr-complete", file)
+            annotated_df = annotate_df(pd.read_csv(full_path))
+            annotated_df.to_csv(os.path.join(output_dir, file), index=False)
+            os.remove(full_path)
