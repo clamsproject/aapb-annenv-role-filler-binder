@@ -15,8 +15,8 @@ tqdm.pandas()
 def annotate_chyron(cleaned_ocr):
 
     system_message = """
-    INSTRUCTIONS: Your job is to match roles and fillers (names) in the following OCR text, which represents a screenshot taken from a public broadcast video. The frame type is CHYRON, meaning the names will typically -- but not always -- appear before their role. Also, typically -- but not always -- there will only be a single name, though it may be attached to multiple roles. Do NOT correct any misspellings. There may be text in the input that is not explicitly matched with a role or name; in those cases, tag them with O. 
-    There should be no roles that aren't co-indexed with a filler, and no fillers that aren't co-indexed with a role. If you try to tag a filler with a role that doesn't appear in a corresponding filler or vice-versa, it should be tagged O instead. Many OCR errors may be present; just do your best to figure out what the underlying structure/meaning of the text.
+    INSTRUCTIONS: Your job is to match roles and fillers (names) in the following OCR text, which represents a screenshot taken from a public broadcast video. The frame type is CHYRON, meaning the names will typically -- but not always -- appear before their role. Also, typically -- but not always -- there will only be a single name, though it may be attached to multiple roles. Do NOT correct any misspellings. There may be text in the input that does not fit as either a role or filler - in those cases, tag them with O.
+    In most cases, every role should correspond with at least one filler, and vice versa. However, there may be some roles that do not have a corresponding filler, or some fillers without a corresponding role.
 
     Please use the following format based in BIO format with indices:
 
@@ -30,20 +30,19 @@ def annotate_chyron(cleaned_ocr):
 
     EXAMPLES:
     OCR STRING: Stanley Kubrick Writer Director of The Shining
-    OUTPUT:
-    Stanley@BF:1 Kubrick@IF:1 Director@BR:1
+    OUTPUT: Stanley@BF:1 Kubrick@IF:1 Writer@BR:1 Director@BR:1 of@IR:1 The@IR:1 Shining@IR:1
 
-    OCR STRING: - :0Meena BoseU.S Military Academy, West Point
-    OUTPUT:
-    :0Meena@BF:1 BoseU.S@IF:1 Military@BR:1 Academy,@IR:1 West@IR:1 Point@IR:1
+    OCR STRING: :0Meena BoseU.S Military Academy, West Point
+    OUTPUT: :0Meena@BF:1 BoseU.S@IF:1 Military@BR:1 Academy,@IR:1 West@IR:1 Point@IR:1
 
     OCR STRING: Indianapolis CLARENCE PAGE Chitago Tribune
-    OUTPUT:
-    Indianapolis@O CLARENCE@BF:1 PAGE@IF:1 Chitago@BR:1 Tribune@IR:1
+    OUTPUT: Indianapolis@O CLARENCE@BF:1 PAGE@IF:1 Chitago@BR:1 Tribune@IR:1
 
     OCR STRING: REP. WIC COURTER GRD MORRI IS COUNTYL
-
     OUTPUT: REP.@BF:1 WIC@IF:1 COURTER@IF:1 GRD@BR:1 MORRI@IR:1 IS@IR:1 COUNTYL@IR:1
+
+    OCR STRING: Dawit Wolde Giorgis
+    OUTPUT: Dawit@BF:1 Wolde@IF:1 Giorgis@IF:1
 
     The most important thing to remember: THE OUTPUT SHOULD BE IDENTICAL TO THE INPUT, VERBATIM, WITH THE ROLE-FILLER TAGS APPENDED TO THE END OF EACH WORD! Do not alter the input text in any other way.
     """
@@ -64,8 +63,8 @@ def annotate_chyron(cleaned_ocr):
 def annotate_credit(cleaned_ocr):
 
     system_message = """
-    INSTRUCTIONS: Your job is to match roles and fillers (names) in the following OCR text, which represents a screenshot taken from a public broadcast video. The frame type is CREDIT, meaning the names will typically -- but not always -- appear AFTER their role. There may be multiple names corresponding with a given role. Do NOT correct any misspellings. There may be text in the input that is not explicitly matched with a role or name; in those cases, tag them with O. 
-    There should be no roles that aren't co-indexed with a filler, and no fillers that aren't co-indexed with a role. If you try to tag a filler with a role that doesn't appear in a corresponding filler or vice-versa, it should be tagged O instead. Many OCR errors may be present; just do your best to figure out what the underlying structure/meaning of the text. When in doubt, tag O! Be conservative i.e. use lots of O's.
+    INSTRUCTIONS: Your job is to match roles and fillers (names) in the following OCR text, which represents a screenshot taken from a public broadcast video. The frame type is CREDIT, meaning the names will typically -- but not always -- appear AFTER their role. There may be multiple names corresponding with a given role. Do NOT correct any misspellings. There may be text in the input that does not fit as either a role or filler - in those cases, tag them with O.
+    In most cases, every role should correspond with at least one filler, and vice versa. However, there may be some roles that do not have a corresponding filler, or some fillers without a corresponding role.
 
     Please use the following format based in BIO format with indices:
 
@@ -83,12 +82,13 @@ def annotate_credit(cleaned_ocr):
     Director@BR:1 Stanley@BF:1 Kubrick@IF:1 Actors@BR:2 Jack@BF:2 Nicholson@IF:2 Shelley@BF:2 Duvall@IF:2
 
     OCR STRING: John Doe PRODUCTION ASSISTANT LuAnne Halligan POST PRODUCTION SUPERVISOR Maggi s66ug
-
     OUTPUT: John@O Doe@O PRODUCTION@BR:1 ASSISTANT@IR:1 LuAnne@BF:1 Halligan@IF:1 POST@BR:2 PRODUCTION@IR:2 SUPERVISOR@IR:2 Maggi@BF:2 s66ug@IF:2
 
     OCR STRING: ENG Crews RUSSELL MARHULL GARY ALLEN CHARLES IDE ED LEE RIC NELSON DAVID PICKERAL STEVE LEDERER BILL MCMILLIN WIC VAN VRANKEN
-
     OUTPUT: ENG@BR:1 Crews@IR:1 RUSSELL@BF:1 MARHULL@IF:1 GARY@BF:1 ALLEN@IF:1 CHARLES@BF:1 IDE@IF:1 ED@BF:1 LEE@IF:1 RIC@BF:1 NELSON@IF:1 DAVID@BF:1 PICKERAL@IF:1 STEVE@BF:1 LEDERER@IF:1 BILL@BF:1 MCMILLIN@IF:1 WIC@BF:1 VAN@IF:1 VRANKEN@IF:1
+
+    OCR STRING: John Mark OPERATIONS SUPPORT Kathy Schwarzhoff Kamal Amen Ra Bridget Redmond
+    OUTPUT: John@BF:1 Mark@IF:1 OPERATIONS@BR:2 SUPPORT@IR:2 Kathy@BF:2 Schwarzhoff@IF:2 Kamal@BF:2 Amen@IF:2 Ra@IF:2 Bridget@BF:2 Redmond@IF:2
 
     The most important thing to remember: THE OUTPUT SHOULD BE IDENTICAL TO THE INPUT, VERBATIM, WITH THE ROLE-FILLER TAGS APPENDED TO THE END OF EACH WORD! Do not alter the input text in any other way.    """
 

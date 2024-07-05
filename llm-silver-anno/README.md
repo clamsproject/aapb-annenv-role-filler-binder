@@ -28,6 +28,16 @@ This directory contains an example input file in `examples/ex.csv`. This file co
 
 This section will walk through the workflow steps using this example file; the same steps will apply to any file with the same format.
 
+### 0.5. Get a batch using SWT/OCR
+
+Before being passed to the annotation environment, the batch file must be a CSV generated using SWT and OCR results. For a formatting example, see anno.csv.
+
+This repository contains a script to convert a directory of MMIF files to this CSV format. To use it, run:
+
+`python utils/swt_to_csv.py --input_dir <INPUT MMIF DIRECTORY> --output_file <OUTPUT FILENAME/PATH>`
+
+If you already have this file, you may skip this step and proceed to annotation.
+
 ### 1. Get the filepaths for each video (skip if `path` column already present in data)
 
 This can be done using the `get_paths.py` util script. Before running, make sure your device can access a machine running the [AAPB datahousing server](https://github.com/clamsproject/aapb-brandeis-datahousing) via HTTP. Then, run:
