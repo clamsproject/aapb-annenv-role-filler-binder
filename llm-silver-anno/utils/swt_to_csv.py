@@ -72,7 +72,13 @@ def dir_to_csv(in_dir: str, out_file: str):
             continue
 
     df = pd.DataFrame.from_dict(data)
+
     print(f"Found {len(df)} annotations.")
+    
+    df = df.drop_duplicates(subset=["textdocument"])
+
+    print(f"Saving {len(df)} unique annotations to {out_file}.")
+    print(f"Total: {len(df[df['scene_label'] == 'chyron'])} chyrons, {len(df[df['scene_label'] == 'credits'])} credits")
     df.to_csv(out_file, index=False)
 
 
