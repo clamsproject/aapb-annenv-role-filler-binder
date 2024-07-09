@@ -104,7 +104,7 @@ add_keyboard_shortcuts({
 
 row = df.iloc[index]
 fpath = row["path"]
-timepoint = row["timePoint"]
+timepoint = row["timepoint"]
 scene_label = row["scene_label"]
 formatted_text = row["cleaned_text"].replace("\n", "<br>")
 
