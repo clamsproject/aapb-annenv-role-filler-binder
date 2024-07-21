@@ -4,14 +4,17 @@ import pandas as pd
 from tqdm import tqdm
 import os
 import re
+from clams_utils.aapb import guidhandler
 from mmif.vocabulary.annotation_types import AnnotationTypes
 
-def dir_to_csv(in_dir: str, out_file: str):
+
+def dir_to_csv(in_dir: str, out_file: str, dedupe=False):
     """
     Gathers annotations from all SWT/OCR MMIF files in a directory
     and writes them to a single CSV file.
     """
     data = []
+    seen_text = set()
     for file in tqdm(os.listdir(in_dir)):
         full_path = os.path.join(in_dir, file)
         try:
@@ -21,8 +24,8 @@ def dir_to_csv(in_dir: str, out_file: str):
             for doc in mmif.documents:
                 if doc.properties["mime"] == "video":
                     video_path = doc.location
-            
-            guid = re.search(r"cpb-aacip-[0-9]*-[a-zA-Z0-9]*", video_path).group(0)
+
+            guid = guidhandler.get_aapb_guid_from(video_path)
 
             for view in mmif.views:
                 alignments = view.get_annotations(AnnotationTypes.Alignment)
@@ -38,7 +41,8 @@ def dir_to_csv(in_dir: str, out_file: str):
                         for view in mmif.views:
                             if target_td in view:
                                 td_anno = view[target_td]
-                    ocr_text = td_anno.properties["text"].value
+                    ocr_text = td_anno.properties["text"].value.strip()
+                    ocr_text_normalized = re.sub(r'[^\w]', '', ocr_text.lower())
 
                     if source_timepoint in mmif:
                         timepoint_anno = mmif[source_timepoint]
@@ -47,7 +51,8 @@ def dir_to_csv(in_dir: str, out_file: str):
                             if source_timepoint in view:
                                 timepoint_anno = view[source_timepoint]
                     timepoint = timepoint_anno.properties["timePoint"]
-                    scene_label, confidence = max(timepoint_anno.properties["classification"].items(), key=lambda x: x[1])
+                    scene_label, confidence = max(timepoint_anno.properties["classification"].items(),
+                                                  key=lambda x: x[1])
 
                     if scene_label in ["I", "N", "Y"]:
                         scene_label = "chyron"
@@ -57,13 +62,15 @@ def dir_to_csv(in_dir: str, out_file: str):
                     else:
                         continue
 
-                    data.append({
-                        "guid": guid,
-                        "timepoint": timepoint,
-                        "scene_label": scene_label,
-                        "confidence": confidence,
-                        "textdocument": ocr_text
-                    })
+                    if not dedupe or (guid, scene_label, ocr_text_normalized) not in seen_text:
+                        data.append({
+                            "guid": guid,
+                            "timepoint": timepoint,
+                            "scene_label": scene_label,
+                            "confidence": confidence,
+                            "textdocument": ocr_text
+                        })
+                    seen_text.add((guid, scene_label, ocr_text_normalized))
 
             # print(f"Total {len(data)} annotations.")
 
@@ -74,7 +81,7 @@ def dir_to_csv(in_dir: str, out_file: str):
     df = pd.DataFrame.from_dict(data)
 
     print(f"Found {len(df)} annotations.")
-    
+
     df = df.drop_duplicates(subset=["textdocument"])
 
     print(f"Saving {len(df)} unique annotations to {out_file}.")
@@ -82,11 +89,11 @@ def dir_to_csv(in_dir: str, out_file: str):
     df.to_csv(out_file, index=False)
 
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MMIF -> CSV conversion script for RFB annotations.")
-    parser.add_argument("--input_dir", type=str, required=True, help="The directory containing the MMIF files.")
-    parser.add_argument("--output_file", type=str, required=True, help="The output CSV file.")
+    parser.add_argument("--input", type=str, required=True, help="The directory containing the MMIF files.")
+    parser.add_argument("--output", type=str, required=True, help="The output CSV file.")
+    parser.add_argument("--dedupe", action='store_true', help="Try to de-dupleicate text document when given")
     args = parser.parse_args()
-    
-    dir_to_csv(args.input_dir, args.output_file)
+
+    dir_to_csv(args.input, args.output, args.dedupe)
