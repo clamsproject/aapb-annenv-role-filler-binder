@@ -24,6 +24,9 @@ if "csv_file" not in st.session_state:
         st.rerun()
     st.stop()
 
+if "jump" not in st.session_state:
+    st.session_state["jump"] = None
+    
 if "df" not in st.session_state:
     st.session_state["df"] = pd.read_csv(st.session_state["csv_file"])
     # Save the name as a string for server saving
@@ -52,9 +55,22 @@ def submit_final_annotations():
     st.balloons()
     st.stop()
 
+def refresh_all():
+    global df, index
+    # df.loc[index, "deleted"] = False
+    # df.loc[index, "label_adjusted"] = False
+    # df.loc[index, "ocr_accepted"] = False
+    st.session_state["ocr_rejected"] = df.loc[index, "annotated"] and not df.loc[index, "ocr_accepted"]
+    st.session_state["scene_label"] = df["scene_label"].iloc[st.session_state["index"]]
+    st.session_state["label_adjusted"] = df.loc[st.session_state["index"], "label_adjusted"]
+    st.session_state["jump"] = None
+
 try:
     if st.session_state.get("jump") and int(st.session_state.get("jump")) < len(df) and int(st.session_state.get("jump")) >= 0:
         index = int(st.session_state.get("jump"))
+        refresh_all()
+        st.write(f"rejected: {st.session_state['ocr_rejected']}, label_adjusted: {st.session_state['label_adjusted']}"
+                 f"index: {index}, jump: {st.session_state.get('jump')}")
     else:
         index = st.session_state.get("index", df.loc[df['annotated'] == False].index[0])
     st.session_state["index"] = index
@@ -177,16 +193,6 @@ def next_example():
     df.to_csv(st.session_state["csv_file"], index=False)
     st.session_state["index"] = index = index + 1
     refresh_all()
-
-def refresh_all():
-    global df, index
-    df.loc[index, "deleted"] = False
-    df.loc[index, "label_adjusted"] = False
-    df.loc[index, "ocr_accepted"] = False
-    st.session_state["ocr_rejected"] = False
-    st.session_state["scene_label"] = df["scene_label"].iloc[st.session_state["index"]]
-    st.session_state["label_adjusted"] = df.loc[st.session_state["index"], "label_adjusted"]
-    st.session_state["jump"] = None
 
 def undo():
     global df, index
