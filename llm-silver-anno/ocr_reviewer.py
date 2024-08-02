@@ -59,6 +59,7 @@ try:
         index = st.session_state.get("index", df.loc[df['annotated'] == False].index[0])
     st.session_state["index"] = index
 except IndexError:
+    st.session_state["index"] = len(df)
     st.header("All images annotated.")
     st.warning("Warning: submitted annotation files cannot be re-annotated. If you need to make changes before submitting, use 'Jump to Row' button below.")
     st.button("Submit Annotations", on_click=submit_final_annotations)
@@ -106,7 +107,7 @@ row = df.iloc[index]
 fpath = row["path"]
 timepoint = row["timepoint"]
 scene_label = row["scene_label"]
-formatted_text = row["cleaned_text"].replace("\n", "<br>")
+formatted_text = str(row["cleaned_text"]).replace("\n", "<br>")
 
 # Get frame image from video
 frame = cv2.VideoCapture(fpath)
@@ -166,7 +167,7 @@ def swap_callback():
 
 def delete_callback():
     global df
-    df.loc[index, "deleted"] = True
+    df.loc[index, "deleted"] = not df.loc[index, "deleted"]
     next_example()
 
 def next_example():
@@ -215,12 +216,11 @@ button_col1, button_col2, button_col3, button_col4 = st.columns(4)
 with button_col1:
     st.button("Submit", on_click=submit_callback)
 with button_col2:
-    st.button("Reject", on_click=reject_callback)
+    st.button("UN-reject" if st.session_state['ocr_rejected'] else "Reject", on_click=reject_callback)
 with button_col3:
     st.button("Swap", on_click=swap_callback)
 with button_col4:
-    st.button("Delete", on_click=delete_callback)
-
+    st.button("UN-delete-and-submit" if row['deleted'] else "Delete-and-submit", on_click=delete_callback)
 
 with sidebar:
     st.button("Oops (Undo last annotation)", on_click=undo)
