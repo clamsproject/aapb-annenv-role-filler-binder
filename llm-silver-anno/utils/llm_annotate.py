@@ -135,17 +135,18 @@ if __name__ == "__main__":
 
     output_dir = os.path.join(BASE_DIR, "annotations/3-llm-in-progress")
 
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
     if args.input_file is not None:
         output_file = os.path.join(output_dir, os.path.basename(args.input_file))
         annotated_df = annotate_df(pd.read_csv(args.input_file))
         annotated_df.to_csv(output_file, index=False)
-        os.remove(args.input_file)
+        os.rename(args.input_file, f'{args.input_file}.{timestamp}.llm-annotated')
 
-    else:
+    elif args.all:
         for file in os.listdir(os.path.join(BASE_DIR, "annotations/2-ocr-complete")):
-            if not file.endswith(".csv"):
+            if file.endswith(".llm-annotated") or file.startswith("."):
                 continue
             full_path = os.path.join(BASE_DIR, "annotations/2-ocr-complete", file)
             annotated_df = annotate_df(pd.read_csv(full_path))
             annotated_df.to_csv(os.path.join(output_dir, file), index=False)
-            os.remove(full_path)
+            os.rename(full_path, f'{full_path}.{timestamp}.llm-annotated')
